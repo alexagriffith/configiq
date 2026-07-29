@@ -1,3 +1,5 @@
+// TODO: Consider adding # of GPUs per setup as a preset in gpu-catalog.json
+
 // GPU Catalog - Hardware specifications
 // Source: gpu-catalog.json (converted from docs/gpu-data)
 
@@ -123,6 +125,7 @@ export const GPU_OPTIONS_KV = [
   { systemId: 'h200_sxm',   label: 'NVIDIA H200 141GB SXM' },
   { systemId: 'b200_sxm',   label: 'NVIDIA B200 192GB SXM' },
   { systemId: 'gb200',      label: 'NVIDIA GB200' },
+  { systemId: 'rtx_pro_6000_server', label: 'NVIDIA RTX PRO 6000 Server' },
 ]
 
 // Backward compatibility - map new JSON schema to old API response format

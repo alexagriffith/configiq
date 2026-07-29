@@ -269,5 +269,24 @@
     "tdp_watts": 760,
     "architecture": "cdna3",
     "color": "#d96060"
+  },
+  {
+    "id": "rtx-pro-6000-96gb",
+    "name": "RTX PRO 6000",
+    "display_name": "NVIDIA RTX PRO 6000 Server",
+    "sizer_system_id": "rtx_pro_6000_server",
+    "vendor": "nvidia",
+    "vram_gb": 96,
+    "hardware_cost_usd": null,
+    "memory_bandwidth_tbps": 1.792,
+    "tokens_per_dollar": null,
+    "tflops_bf16": 468,
+    "tflops_fp8": 936,
+    "mfu_prefill": null,
+    "mfu_decode": null,
+    "tdp_watts": 600,
+    "architecture": "blackwell",
+    "nvlink_bandwidth_gbps": 0,
+    "color": "#b48080"
   }
 ]

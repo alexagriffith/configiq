@@ -120,6 +120,13 @@
       "powerWatts": 450,
       "cloudAvailabilityPct": 60,
       "tpuAvailabilityPct": 20
+    },
+    {
+      "id": "rtx-pro-6000-96gb",
+      "name": "RTX PRO 6000 96 GB",
+      "vramGb": 96,
+      "memoryBandwidthGbps": 1792,
+      "tflops": 468
     }
   ]
 }
