@@ -19,11 +19,9 @@ import {
   BoltIcon,
   SlidersHIcon,
   CubesIcon,
-  HistoryIcon,
   DollarSignIcon,
   RouteIcon,
   CogIcon,
-  ListIcon,
 } from "@patternfly/react-icons";
 import { getVersionString, getBuildTimeString, getShortCommit } from "@/lib/version";
 
@@ -172,18 +170,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               label="GPU explorer"
               href="/gpu-explorer"
               isActive={pathname === "/gpu-explorer"}
-            />
-            <NavItemWithIcon
-              icon={ListIcon}
-              label="Compare"
-              href="/compare"
-              isActive={pathname === "/compare"}
-            />
-            <NavItemWithIcon
-              icon={HistoryIcon}
-              label="History"
-              href="#"
-              isActive={false}
             />
 
             <div style={groupLabelStyle}>OPTIMIZE</div>

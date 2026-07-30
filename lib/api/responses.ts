@@ -1,28 +1,6 @@
-// API Response Formatting
-// Standardized success responses
-
-import type { InferenceConfigResult } from '../gpu-math/inference-config'
 import type { GpuSpec } from '../gpu-math/gpus'
 import type { ModelSpec } from '../gpu-math/models'
 
-/**
- * Format inference config result for API response.
- * Adds metadata and ensures consistent structure.
- */
-export function formatInferenceConfigResponse(result: InferenceConfigResult) {
-  return {
-    success: true,
-    data: result,
-    metadata: {
-      generated_at: new Date().toISOString(),
-      version: 'v1'
-    }
-  }
-}
-
-/**
- * Format GPU catalog for API response.
- */
 export function formatGpuCatalogResponse(gpus: GpuSpec[]) {
   return {
     success: true,
@@ -37,7 +15,6 @@ export function formatGpuCatalogResponse(gpus: GpuSpec[]) {
         tflops: gpu.tflops,
         power_watts: gpu.powerWatts,
         cloud_availability_pct: gpu.cloudAvailabilityPct,
-        // Include live pricing if available
         ...(gpu.livePricing && { live_pricing: gpu.livePricing })
       })),
       count: gpus.length
@@ -45,9 +22,6 @@ export function formatGpuCatalogResponse(gpus: GpuSpec[]) {
   }
 }
 
-/**
- * Format model catalog for API response.
- */
 export function formatModelCatalogResponse(models: ModelSpec[]) {
   return {
     success: true,

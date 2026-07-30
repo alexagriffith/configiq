@@ -1,5 +1,5 @@
 // GET /api/v1/gpus
-// GPU catalog endpoint with filtering + live pricing from Cloudflare Worker
+// GPU catalog endpoint — tries AIConfigurator first, falls back to local catalog + Cloudflare pricing
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
@@ -8,11 +8,41 @@ import { ApiErrors } from '@/lib/api/errors'
 import { formatGpuCatalogResponse } from '@/lib/api/responses'
 import { GPU_CATALOG, type GpuSpec } from '@/lib/gpu-math/gpus'
 import { fetchGPUPricing, aggregateGPUPricing } from '@/lib/api/cloudflare'
+import { fetchHardwareList, fetchHardwareSpec } from '@/lib/api/gpus'
 
 export async function GET(req: NextRequest) {
   try {
-    // Parse and validate query parameters
     const { searchParams } = new URL(req.url)
+    const source = searchParams.get('source')
+
+    // ── AIConfigurator path (default) ──────────────────────────────────────
+    // Try AIC first unless the caller explicitly requests local data
+    if (source !== 'local') {
+      try {
+        console.log('[GPUs API] Fetching hardware list from AIConfigurator...')
+        const systems = await fetchHardwareList()
+        console.log(`[GPUs API] Received ${systems.length} systems from AIConfigurator`)
+
+        const specs = await Promise.all(systems.map(s => fetchHardwareSpec(s)))
+        console.log(`[GPUs API] Fetched specs for ${specs.length} systems`)
+
+        return NextResponse.json(
+          { success: true, data: { gpus: specs, count: specs.length }, source: 'aiconfigurator' },
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400'
+            }
+          }
+        )
+      } catch (aicError) {
+        // Fall through to local catalog
+        console.error('[GPUs API] AIConfigurator unavailable, falling back to local catalog:', aicError)
+      }
+    }
+
+    // ── Local catalog fallback ─────────────────────────────────────────────
     const query: Record<string, string> = {}
 
     const minMem = searchParams.get('min_memory')
@@ -115,13 +145,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Return formatted response
-    return NextResponse.json(formatGpuCatalogResponse(filteredGpus), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400' // 6 hours
+    return NextResponse.json(
+      { ...formatGpuCatalogResponse(filteredGpus), source: 'local_fallback' },
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400'
+        }
       }
-    })
+    )
 
   } catch (error) {
     if (error instanceof ZodError) {

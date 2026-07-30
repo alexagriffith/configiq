@@ -5,7 +5,7 @@ import { Alert, Spinner } from '@patternfly/react-core'
 import { MODEL_CATALOG } from '@/lib/gpu-math/models'
 import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
-import { useCountUp } from '@/app/quick-estimate/quickEstimateHelpers'
+import { useCountUp } from '@/lib/hooks/useCountUp'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
 
@@ -323,11 +323,11 @@ export default function KvCacheCalc() {
           <Alert variant={error.toLowerCase().includes('unsupported') ? 'warning' : 'danger'} title="Calculation failed" isInline>
             <p>{error}</p>
             <p style={{ marginTop: 8 }}>
-              You can also try using our{' '}
-              <a href="/quick-estimate" className={styles.errorLink}>
-                Quick Estimate calculator
+              You can also try using the{' '}
+              <a href="/calculator" className={styles.errorLink}>
+                Advanced calculator
               </a>{' '}
-              for an approximate KV cache calculation.
+              for GPU sizing estimates.
             </p>
           </Alert>
         </div>
