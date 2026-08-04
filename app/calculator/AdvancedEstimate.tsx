@@ -13,13 +13,10 @@ import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 
 import styles from './AdvancedEstimate.module.css';
-import { MODEL_CATALOG } from '@/lib/gpu-math/models';
-import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
-
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
 
 // ─── FlipTile (reused from Quick Estimate pattern) ───────────────────────────
 
@@ -128,11 +125,12 @@ function friendlyErrorHint(code: string | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdvancedEstimate() {
+  // AIC catalog
+  const { gpuOptions, modelOptions, isLoading: catalogLoading } = useAicCatalog();
+
   // Input state
   const [model, setModel] = React.useState('meta-llama/Llama-3.1-70B-Instruct');
-  const [gpuSystem, setGpuSystem] = React.useState(
-    GPU_OPTIONS_ADV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_ADV[0]?.systemId ?? ''
-  );
+  const [gpuSystem, setGpuSystem] = React.useState('');
   const [isl, setIsl] = React.useState(2048);
   const [osl, setOsl] = React.useState(128);
   const [ttft, setTtft] = React.useState(1000);
@@ -155,6 +153,14 @@ export default function AdvancedEstimate() {
   // Live pricing
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
 
+  // Set default GPU once catalog loads
+  React.useEffect(() => {
+    if (gpuOptions.length > 0 && !gpuSystem) {
+      const preferred = gpuOptions.find(g => g.systemId === 'h200_sxm');
+      setGpuSystem(preferred?.systemId ?? gpuOptions[0].systemId);
+    }
+  }, [gpuOptions, gpuSystem]);
+
   // Load HF token from localStorage
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -170,7 +176,7 @@ export default function AdvancedEstimate() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
-      const inCatalog = MODEL_CATALOG.some(m => m.hfId === model);
+      const inCatalog = modelOptions.includes(model);
       setModelStatus(inCatalog ? 'catalog' : 'fetching');
       fetchModelConfig(model, hfToken).then(r => {
         if (r.success && r.config) {
@@ -181,7 +187,7 @@ export default function AdvancedEstimate() {
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken]);
+  }, [model, hfToken, modelOptions]);
 
   // Fetch live pricing
   React.useEffect(() => {
@@ -212,10 +218,8 @@ export default function AdvancedEstimate() {
     }
   };
 
-  // Get GPU + model spec from catalog
-  const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
-  const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
-  const catalogModel = MODEL_CATALOG.find(m => m.hfId === model);
+  // Get current GPU from catalog
+  const currentGpu = gpuOptions.find(g => g.systemId === gpuSystem);
 
   const handleCalculate = () => {
     startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft });
@@ -229,10 +233,9 @@ export default function AdvancedEstimate() {
   const memVal = useCountUp(result?.memory.value ?? 0, 750, 1);
 
   // Cost calculations
-  const gpuShortName = currentGpuOption.label.replace(/NVIDIA\s+/i, '').replace(/AMD\s+/i, '').split(' ')[0];
+  const gpuShortName = (currentGpu?.label ?? '').replace(/NVIDIA\s+/i, '').replace(/AMD\s+/i, '').split(' ')[0];
   const livePrice = livePricing[gpuShortName];
-  const hwCost = gpuSpec?.hardware_cost_usd ?? 30000;
-  const pricePerHour = livePrice ?? hwCost / (36 * 730);
+  const pricePerHour = livePrice ?? 30000 / (36 * 730);
   const numGpus = result?.recommendation.totalGpus ?? 0;
   const monthlyCost = numGpus * pricePerHour * 730;
 
@@ -265,7 +268,7 @@ export default function AdvancedEstimate() {
                 placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
               />
               <datalist id="model-options">
-                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
+                {modelOptions.map(m => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
                 {modelStatus === 'catalog' && (
@@ -294,13 +297,15 @@ export default function AdvancedEstimate() {
               value={gpuSystem}
               onChange={e => setGpuSystem(e.target.value)}
             >
-              {GPU_OPTIONS_ADV.map(g => (
+              {gpuOptions.map(g => (
                 <option key={g.systemId} value={g.systemId}>{g.label}</option>
               ))}
             </select>
-            {gpuSpec && (
+            {currentGpu && (
               <div className={styles.helperText}>
-                {gpuSpec.vram_gb} GB · {gpuSpec.memory_bandwidth_tbps} TB/s · {gpuSpec.tflops_bf16} TFLOPS
+                {currentGpu.vramGb != null && <>{currentGpu.vramGb} GB · </>}
+                {currentGpu.bandwidthTbps != null && <>{currentGpu.bandwidthTbps} TB/s · </>}
+                {currentGpu.tflopsBf16 != null && <>{currentGpu.tflopsBf16} TFLOPS</>}
               </div>
             )}
           </div>
@@ -473,7 +478,7 @@ export default function AdvancedEstimate() {
                 <>
                   <span className={styles.tileLabel}><MicrochipIcon /> GPUs required</span>
                   <span className={styles.tileValue}>
-                    {gpuCount}<span className={styles.tileUnit}>× {currentGpuOption.label}</span>
+                    {gpuCount}<span className={styles.tileUnit}>× {currentGpu?.label}</span>
                   </span>
                   <span className={styles.tileSub}>
                     TP {result.recommendation.tensorParallelSize} · PP {result.recommendation.pipelineParallelSize} · DP {result.recommendation.dataParallelSize} · {result.performance.concurrency} concurrent users

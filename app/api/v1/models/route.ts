@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchSupportedModels } from '@/lib/api/models'
-import { MODEL_CATALOG } from '@/lib/gpu-math/models'
-import { formatModelCatalogResponse } from '@/lib/api/responses'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -23,30 +21,9 @@ export async function GET(req: NextRequest) {
     }
   } catch {
     // Fall through to local catalog
+    
   }
 
-  const q = searchParams.get('q')?.toLowerCase()
-  let filtered = [...MODEL_CATALOG]
-  if (q) {
-    filtered = filtered.filter(m =>
-      m.name.toLowerCase().includes(q) || m.hfId.toLowerCase().includes(q)
-    )
-  }
-  const vendor = searchParams.get('vendor')
-  if (vendor) {
-    filtered = filtered.filter(m => m.vendor.toLowerCase() === vendor.toLowerCase())
-  }
-
-  return NextResponse.json(
-    { ...formatModelCatalogResponse(filtered), source: 'local_fallback' },
-    {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
-      }
-    }
-  )
 }
 
 export async function OPTIONS() {

@@ -2,14 +2,11 @@
 
 import * as React from 'react'
 import { Alert, Spinner } from '@patternfly/react-core'
-import { MODEL_CATALOG } from '@/lib/gpu-math/models'
-import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
-
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId)
 
 const BREAKDOWN_COLORS: Record<string, string> = {
   kv: '#0066cc',
@@ -20,8 +17,10 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
-  const [model, setModel] = React.useState(MODEL_CATALOG[0]?.hfId ?? '')
-  const [system, setSystem] = React.useState(GPU_OPTIONS_KV[0]?.systemId ?? '')
+  const { gpuOptions, modelOptions, isLoading: catalogLoading } = useAicCatalog()
+
+  const [model, setModel] = React.useState('')
+  const [system, setSystem] = React.useState('')
   const [backend, setBackend] = React.useState('vllm')
   const [backendVersion, setBackendVersion] = React.useState('')
   const [maxNumTokens, setMaxNumTokens] = React.useState(8192)
@@ -43,7 +42,20 @@ export default function KvCacheCalc() {
   const [debugStatus, setDebugStatus] = React.useState<number | null>(null)
   const [debugDuration, setDebugDuration] = React.useState<number | null>(null)
 
-  const catalogMatch = MODEL_CATALOG.find(m => m.hfId === model)
+  // Set defaults once catalog loads
+  React.useEffect(() => {
+    if (gpuOptions.length > 0 && !system) {
+      setSystem(gpuOptions[0].systemId)
+    }
+  }, [gpuOptions, system])
+
+  React.useEffect(() => {
+    if (modelOptions.length > 0 && !model) {
+      setModel(modelOptions[0])
+    }
+  }, [modelOptions, model])
+
+  const catalogMatch = modelOptions.includes(model)
 
   async function handleCalculate() {
     setLoading(true)
@@ -134,7 +146,7 @@ export default function KvCacheCalc() {
                 className={styles.modelInput}
               />
               <datalist id="kv-models">
-                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
+                {modelOptions.map(m => <option key={m} value={m} />)}
               </datalist>
               {model && (
                 <span className={`${styles.modelChip} ${catalogMatch ? styles.modelChipCatalog : styles.modelChipCustom}`}>
@@ -152,7 +164,7 @@ export default function KvCacheCalc() {
               onChange={e => setSystem(e.target.value)}
               className={styles.gpuSelect}
             >
-              {GPU_OPTIONS_KV.map(g => (
+              {gpuOptions.map(g => (
                 <option key={g.systemId} value={g.systemId}>{g.label}</option>
               ))}
             </select>
