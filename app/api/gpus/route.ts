@@ -1,4 +1,4 @@
-// GET /api/v1/gpus
+// GET /api/gpus
 // GPU catalog endpoint with filtering + live pricing from Cloudflare Worker
 
 import { NextRequest, NextResponse } from 'next/server'

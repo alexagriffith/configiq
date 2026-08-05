@@ -62,7 +62,7 @@ export default function RoutingEconomics() {
   React.useEffect(() => {
     const fetchPricing = async () => {
       try {
-        const response = await fetch('/api/v1/gpus?live_pricing=true')
+        const response = await fetch('/api/gpus?live_pricing=true')
         const data = await response.json()
         if (data.status === 'success' && data.data?.gpus) {
           const pricing: Record<string, number> = {}

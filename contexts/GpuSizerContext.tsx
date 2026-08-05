@@ -106,7 +106,7 @@ export function GpuSizerProvider({ children }: { children: React.ReactNode }) {
 
     const t0 = performance.now();
 
-    fetch('/api/v1/gpu-sizer', {
+    fetch('/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
