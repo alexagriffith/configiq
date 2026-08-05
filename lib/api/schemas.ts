@@ -51,13 +51,22 @@ export type ModelCatalogQuery = z.infer<typeof ModelCatalogQuerySchema>
 export const GpuSizerRequestSchema = z.object({
   model_path: z.string().min(1, 'model_path is required'),
   system: z.string().min(1, 'system is required'),
+  backend: z.string().default('vllm'),
+  backend_version: z.string().nullish(),
   isl: z.number().int().positive('isl must be a positive integer'),
   osl: z.number().int().positive('osl must be a positive integer'),
   ttft: z.number().positive('ttft must be a positive number (milliseconds)'),
-  tps_per_user: z.number().positive('tps_per_user must be positive').optional(),
-  e2e: z.number().positive('e2e must be positive').optional(),
-  batch_size: z.number().int().positive('batch_size must be a positive integer').optional(),
-}).strict()
+  tpot: z.number().positive('tpot must be a positive number (milliseconds)').default(30),
+  target_request_rate: z.number().positive().nullish(),
+  target_concurrency: z.number().positive().nullish(),
+  request_latency: z.number().positive().nullish(),
+  prefix: z.number().int().min(0).default(0),
+  database_mode: z.enum(['HYBRID', 'SILICON', 'EMPIRICAL', 'SOL']).default('HYBRID'),
+  top_n: z.number().int().min(1).max(20).default(5),
+}).strict().refine(
+  data => (data.target_request_rate != null) !== (data.target_concurrency != null),
+  { message: 'Exactly one of target_request_rate or target_concurrency must be provided' }
+)
 
 export type GpuSizerRequest = z.infer<typeof GpuSizerRequestSchema>
 

@@ -13,6 +13,7 @@ export interface GpuSizerResult {
   recommendation: {
     gpusNeeded: number
     totalGpus: number
+    replicasNeeded: number
     tensorParallelSize: number
     pipelineParallelSize: number
     dataParallelSize: number
@@ -63,7 +64,6 @@ export function generateRequestId(): string {
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_URL = 'http://163.74.81.138:7860/gpu_sizer'
 const DEFAULT_TIMEOUT_SECONDS = 90
 
 export async function callGpuSizer(
@@ -72,32 +72,34 @@ export async function callGpuSizer(
   const requestId = generateRequestId()
   const startTime = performance.now()
 
-  const url = process.env.GPU_SIZER_URL || DEFAULT_URL
-  const username = process.env.GPU_SIZER_USERNAME
-  const password = process.env.GPU_SIZER_PASSWORD
-  const timeoutSeconds = parseInt(process.env.GPU_SIZER_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
+  const baseUrl = process.env.AICONFIGURATOR_API_URL
+  const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
-  if (!username || !password) {
-    return makeError(requestId, 'GPU_SIZER_NOT_CONFIGURED', 'GPU sizing service is not configured')
+  if (!baseUrl) {
+    return makeError(requestId, 'AIC_NOT_CONFIGURED', 'AIConfigurator API URL is not configured')
   }
 
   const externalPayload: Record<string, unknown> = {
     model_path: request.model_path,
     system: request.system,
+    backend: request.backend ?? 'vllm',
     isl: request.isl,
     osl: request.osl,
     ttft: request.ttft,
-    username,
-    password,
+    tpot: request.tpot ?? 30,
+    database_mode: request.database_mode ?? 'HYBRID',
+    top_n: request.top_n ?? 5,
   }
 
-  if (request.tps_per_user !== undefined) externalPayload.tps_per_user = request.tps_per_user
-  if (request.e2e !== undefined) externalPayload.e2e = request.e2e
-  if (request.batch_size !== undefined) externalPayload.batch_size = request.batch_size
+  if (request.backend_version != null) externalPayload.backend_version = request.backend_version
+  if (request.target_request_rate != null) externalPayload.target_request_rate = request.target_request_rate
+  if (request.target_concurrency != null) externalPayload.target_concurrency = request.target_concurrency
+  if (request.request_latency != null) externalPayload.request_latency = request.request_latency
+  if (request.prefix != null) externalPayload.prefix = request.prefix
 
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await fetch(`${baseUrl}/recommend`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,64 +111,48 @@ export async function callGpuSizer(
   } catch (err: unknown) {
     const durationMs = Math.round(performance.now() - startTime)
     if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
-      return makeError(requestId, 'GPU_SIZER_TIMEOUT', `The GPU sizing engine did not respond within ${timeoutSeconds} seconds (waited ${durationMs}ms)`)
+      return makeError(requestId, 'AIC_TIMEOUT', `The AIConfigurator API did not respond within ${timeoutSeconds} seconds (waited ${durationMs}ms)`)
     }
-    return makeError(requestId, 'GPU_SIZER_UNAVAILABLE', 'GPU sizing service is unreachable')
-  }
-
-  if (response.status === 401 || response.status === 403) {
-    return makeError(requestId, 'GPU_SIZER_AUTH_FAILED', 'Authentication with GPU sizing service failed')
+    return makeError(requestId, 'AIC_UNAVAILABLE', 'AIConfigurator API is unreachable')
   }
 
   if (!response.ok) {
-    return makeError(requestId, 'GPU_SIZER_UNAVAILABLE', `GPU sizing service returned HTTP ${response.status}`)
+    let detail = `AIConfigurator API returned HTTP ${response.status}`
+    try {
+      const body = await response.json()
+      if (typeof body.detail === 'string') detail = body.detail
+    } catch { /* ignore parse errors */ }
+
+    const code = response.status === 422 ? 'AIC_NO_CONFIGURATION' : 'AIC_UNAVAILABLE'
+    return makeError(requestId, code, detail)
   }
 
   let rawData: Record<string, unknown>
   try {
-    const parsed = await response.json()
-    if (parsed == null || typeof parsed !== 'object') {
-      return makeError(requestId, 'GPU_SIZER_NO_CONFIGURATION', 'No valid GPU configuration found for this model and hardware combination. Try a different GPU system or adjust your parameters.')
-    }
-    rawData = parsed as Record<string, unknown>
+    rawData = await response.json() as Record<string, unknown>
   } catch {
-    return makeError(requestId, 'GPU_SIZER_INVALID_RESPONSE', 'GPU sizing service returned non-JSON response')
+    return makeError(requestId, 'AIC_INVALID_RESPONSE', 'AIConfigurator API returned non-JSON response')
   }
 
-  const requiredFields = [
-    'gpus_needed', 'ttft_latency', 'concurrency', 'tpot_ms',
-    'tokens_per_second', 'memory', 'tp_size', 'pp_size', 'dp_size',
-  ] as const
-
-  const missingFields = requiredFields.filter(f => typeof rawData[f] !== 'number')
-  if (missingFields.length > 0) {
-    return makeError(
-      requestId,
-      'GPU_SIZER_INVALID_RESPONSE',
-      `GPU sizing response missing required fields: ${missingFields.join(', ')}`
-    )
+  const configs = rawData.configs as Array<Record<string, unknown>> | undefined
+  if (!configs || configs.length === 0) {
+    return makeError(requestId, 'AIC_NO_CONFIGURATION', 'No valid GPU configuration found for this model and hardware combination.')
   }
 
-  const gpusNeeded = rawData.gpus_needed as number
-  const totalGpus = (typeof rawData.num_total_gpus === 'number' ? rawData.num_total_gpus : gpusNeeded) as number
-  const tp = rawData.tp_size as number
-  const pp = rawData.pp_size as number
-  const dp = rawData.dp_size as number
+  const best = configs[0]
+  const totalGpusNeeded = (best.total_gpus_needed as number) ?? 0
+  const numTotalGpus = (best.num_total_gpus as number) ?? totalGpusNeeded
+  const tp = (best.tp as number) ?? 1
+  const pp = (best.pp as number) ?? 1
+  const dp = (best.dp as number) ?? 1
+  const replicasNeeded = (best.replicas_needed as number) ?? 1
 
   const warnings: GpuSizerWarning[] = []
-
   const parallelismProduct = tp * pp * dp
-  if (parallelismProduct !== totalGpus) {
+  if (parallelismProduct !== numTotalGpus) {
     warnings.push({
       code: 'GPU_TOPOLOGY_MISMATCH',
-      message: `Parallelism dimensions (TP=${tp} x PP=${pp} x DP=${dp} = ${parallelismProduct}) do not equal total GPU count (${totalGpus})`,
-    })
-  }
-
-  if (gpusNeeded !== totalGpus) {
-    warnings.push({
-      code: 'GPU_COUNT_MISMATCH',
-      message: `gpus_needed (${gpusNeeded}) differs from num_total_gpus (${totalGpus})`,
+      message: `Parallelism dimensions (TP=${tp} x PP=${pp} x DP=${dp} = ${parallelismProduct}) do not equal GPUs per worker (${numTotalGpus})`,
     })
   }
 
@@ -176,25 +162,26 @@ export async function callGpuSizer(
     requestId,
     status: 'completed',
     recommendation: {
-      gpusNeeded,
-      totalGpus,
+      gpusNeeded: totalGpusNeeded,
+      totalGpus: numTotalGpus,
+      replicasNeeded,
       tensorParallelSize: tp,
       pipelineParallelSize: pp,
       dataParallelSize: dp,
     },
     performance: {
-      ttftLatencyMs: rawData.ttft_latency as number,
-      tpotMs: rawData.tpot_ms as number,
-      requestLatencyMs: typeof rawData.request_latency === 'number' ? rawData.request_latency as number : 0,
-      concurrency: rawData.concurrency as number,
+      ttftLatencyMs: (best.ttft as number) ?? 0,
+      tpotMs: (best.tpot as number) ?? 0,
+      requestLatencyMs: (best.request_latency as number) ?? 0,
+      concurrency: (best.concurrency as number) ?? 0,
     },
     throughput: {
-      tokensPerSecond: rawData.tokens_per_second as number,
-      tokensPerSecondPerGpu: typeof rawData.tokens_per_second_per_gpu === 'number' ? rawData.tokens_per_second_per_gpu as number : 0,
-      tokensPerSecondPerUser: typeof rawData.tokens_per_second_per_user === 'number' ? rawData.tokens_per_second_per_user as number : 0,
+      tokensPerSecond: (best.tokens_per_second as number) ?? 0,
+      tokensPerSecondPerGpu: (best.tokens_per_second_per_gpu as number) ?? 0,
+      tokensPerSecondPerUser: (best.tokens_per_second_per_user as number) ?? 0,
     },
     memory: {
-      value: rawData.memory as number,
+      value: (best.memory as number) ?? 0,
       unit: 'GB',
       scope: 'unspecified',
     },
