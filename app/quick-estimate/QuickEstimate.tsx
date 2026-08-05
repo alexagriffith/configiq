@@ -617,7 +617,7 @@ export default function QuickEstimate() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `gpu-calc-estimate-${Date.now()}.csv`);
+    link.setAttribute('download', `configiq-estimate-${Date.now()}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

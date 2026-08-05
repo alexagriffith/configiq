@@ -1,6 +1,6 @@
 /**
  * GPU memory estimation formulas.
- * Ported from the original gpu-calc static site.
+ * GPU memory estimation formulas.
  */
 
 export interface MemoryEstimateInput {

@@ -2,7 +2,7 @@
 
 ## Application structure
 
-gpu-calc is a single Next.js application using the App Router.
+ConfigIQ is a single Next.js application using the App Router.
 
 ```
 Browser → Next.js (Vercel) → lib/gpu-math (calculations)

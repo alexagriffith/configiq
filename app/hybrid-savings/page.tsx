@@ -16,7 +16,7 @@ export default function HybridSavingsPage() {
           <CubesIcon />
           <Title headingLevel="h2" size="lg">Coming soon</Title>
           <EmptyStateBody>
-            This tool is being ported from the original gpu-calc static site.
+            This tool is coming soon.
           </EmptyStateBody>
         </EmptyState>
       </PageSection>

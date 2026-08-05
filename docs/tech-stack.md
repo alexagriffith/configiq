@@ -14,7 +14,7 @@ a future migration.
 ## PatternFly v5
 
 Chosen over shadcn/ui + Tailwind because:
-- gpu-calc follows Red Hat brand standards
+- ConfigIQ follows PatternFly design standards
 - PatternFly is Red Hat's own design system — zero theming work
 - Built for data-dense, engineer-facing tools (exactly this use case)
 - Includes charts (Victory Charts) — no separate chart library needed
