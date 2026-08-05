@@ -28,11 +28,11 @@ import styles from './QuickEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
 import { ProductTour, type TourStep } from '@/components/ProductTour';
 import { SaveEstimateModal } from './SaveEstimateModal';
-import { computeInferenceConfig } from '@/lib/gpu-math/inference-config';
 import { MODEL_CATALOG } from '@/lib/gpu-math/models';
 import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
+import { fetchRecommendAsInferenceResult } from '@/lib/api/recommend-adapter';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
@@ -76,7 +76,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
-  const [model, setModel] = React.useState('nvidia/Nemotron-Mini-4B-Instruct');
+  const [model, setModel] = React.useState('meta-llama/Meta-Llama-3.1-70B');
   const [gpu, setGpu] = React.useState(
     GPU_OPTIONS.find(g => g.includes('H200')) ?? GPU_OPTIONS[0]
   );
@@ -142,6 +142,12 @@ export default function QuickEstimate() {
     return match?.id ?? uiGpuName.toLowerCase().replace(/\s+/g, '-');
   };
 
+  const mapGpuToSystemId = (uiGpuName: string): string | null => {
+    const catalogId = mapGpuToCatalogId(uiGpuName);
+    const spec = GPU_CATALOG.find(g => g.id === catalogId);
+    return spec?.sizer_system_id ?? null;
+  };
+
   // Add loading state
   const [isCalculating, setIsCalculating] = React.useState(false);
 
@@ -200,59 +206,38 @@ export default function QuickEstimate() {
     return () => clearTimeout(timer);
   }, [model, hfToken]);
 
-  // Auto-run calculation when inputs change (direct useEffect, no callback wrapper)
+  // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
-    // Don't calculate while fetching HF config
-    if (isFetchingConfig) {
-      console.log('⏸️ Skipping calculation - waiting for HF config fetch to complete');
-      return;
-    }
+    const systemId = mapGpuToSystemId(gpu);
+    if (!systemId || !model) return;
 
-    console.log('🔄 Running calculation with model:', model);
+    let cancelled = false;
     setIsCalculating(true);
 
-    // Small delay to batch rapid state changes
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       try {
-        const catalogGpuId = mapGpuToCatalogId(gpu);
-
-        const result = computeInferenceConfig({
-          model_name: model,
-          precision: testWeightPrecision,
-          kv_cache_precision: testKVCachePrecision,
-          gpu_type: catalogGpuId,
-          concurrent_users: testConcurrentUsers,
+        const result = await fetchRecommendAsInferenceResult({
+          model_path: model,
+          system: systemId,
           isl: testISL,
           osl: testOSL,
-          workload_type: testWorkloadType,
-          sla_priority: testSLAPriority,
-          hf_config: hfConfig || undefined,  // Pass fetched config if available
-          // Manual overrides for Parallelism
-          manual_tp_size: parallelismOverride && parallelismManualTP !== null ? parallelismManualTP : undefined,
-          manual_replicas: parallelismOverride && parallelismManualReplicas !== null ? parallelismManualReplicas : undefined,
-          // Manual overrides for vLLM config
-          manual_max_num_seqs: vllmOverride && vllmManualMaxNumSeqs !== null ? vllmManualMaxNumSeqs : undefined,
-          manual_max_model_len: vllmOverride && vllmManualMaxModelLen !== null ? vllmManualMaxModelLen : undefined,
-          manual_enable_chunked_prefill: vllmOverride && vllmManualChunkedPrefill !== null ? vllmManualChunkedPrefill : undefined,
-          manual_enable_prefix_caching: vllmOverride && vllmManualPrefixCaching !== null ? vllmManualPrefixCaching : undefined,
-          manual_gpu_memory_utilization: vllmOverride && vllmManualGpuUtil !== null ? vllmManualGpuUtil / 100 : undefined  // Convert percentage to 0-1
+          concurrent_users: testConcurrentUsers,
         });
-        setTestResult(result);
-        setTestError(null);
-        console.log('✅ Inference engine result:', result);
-        console.log('   Inputs:', { model, gpu: catalogGpuId, testConcurrentUsers, testISL, testOSL, testWorkloadType, testSLAPriority, weight: testWeightPrecision, kv: testKVCachePrecision });
+        if (!cancelled) {
+          setTestResult(result);
+          setTestError(null);
+        }
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        setTestError(errorMsg);
-        console.error('❌ Inference engine failed:', error);
+        if (!cancelled) {
+          setTestError(error instanceof Error ? error.message : String(error));
+        }
       } finally {
-        setIsCalculating(false);
+        if (!cancelled) setIsCalculating(false);
       }
-    }, 100);
+    }, 500);
 
-    // Cleanup timeout on unmount or dependency change
-    return () => clearTimeout(timer);
-  }, [model, gpu, testConcurrentUsers, testISL, testOSL, testWorkloadType, testSLAPriority, testWeightPrecision, testKVCachePrecision, hfConfig, isFetchingConfig, parallelismOverride, parallelismManualTP, parallelismManualReplicas, vllmOverride, vllmManualMaxNumSeqs, vllmManualMaxModelLen, vllmManualChunkedPrefill, vllmManualPrefixCaching, vllmManualGpuUtil]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [model, gpu, testConcurrentUsers, testISL, testOSL]);
 
   // Fetch live pricing from Cloudflare Worker
   React.useEffect(() => {
