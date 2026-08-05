@@ -1,4 +1,4 @@
-// GET /api/v1/models
+// GET /api/models
 // Model catalog endpoint with search and filtering
 
 import { NextRequest, NextResponse } from 'next/server'

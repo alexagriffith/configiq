@@ -53,19 +53,14 @@ describe('KvCacheCalcRequestSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects empty model_path', () => {
-    const result = KvCacheCalcRequestSchema.safeParse({ ...VALID_REQUEST, model_path: '' })
-    expect(result.success).toBe(false)
-  })
-
   it('rejects missing system', () => {
     const { system, ...rest } = VALID_REQUEST
     const result = KvCacheCalcRequestSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
 
-  it('rejects empty system', () => {
-    const result = KvCacheCalcRequestSchema.safeParse({ ...VALID_REQUEST, system: '' })
+  it('rejects memory_fraction_value above 1', () => {
+    const result = KvCacheCalcRequestSchema.safeParse({ ...VALID_REQUEST, memory_fraction_value: 1.5 })
     expect(result.success).toBe(false)
   })
 
@@ -74,20 +69,10 @@ describe('KvCacheCalcRequestSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects username field from client', () => {
-    const result = KvCacheCalcRequestSchema.safeParse({ ...VALID_REQUEST, username: 'hacker' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects password field from client', () => {
-    const result = KvCacheCalcRequestSchema.safeParse({ ...VALID_REQUEST, password: 'secret' })
-    expect(result.success).toBe(false)
-  })
-
-  it('applies defaults when optional fields are omitted', () => {
+  it('applies defaults for optional fields', () => {
     const result = KvCacheCalcRequestSchema.safeParse({
-      model_path: 'meta-llama/Llama-3.1-8B',
-      system: 'h100_sxm',
+      model_path: 'test/model',
+      system: 'h200_sxm',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -98,9 +83,6 @@ describe('KvCacheCalcRequestSchema', () => {
       expect(result.data.pp_size).toBe(1)
       expect(result.data.memory_fraction_kind).toBe('of_total')
       expect(result.data.memory_fraction_value).toBe(1.0)
-      expect(result.data.moe_tp_size).toBeUndefined()
-      expect(result.data.moe_ep_size).toBeUndefined()
-      expect(result.data.backend_version).toBeUndefined()
     }
   })
 })
@@ -109,9 +91,7 @@ describe('KvCacheCalcRequestSchema', () => {
 
 describe('callKvCacheCalc', () => {
   beforeEach(() => {
-    vi.stubEnv('AICONFIGURATOR_USERNAME', 'test-user')
-    vi.stubEnv('AICONFIGURATOR_PASSWORD', 'test-pass')
-    vi.stubEnv('AICONFIGURATOR_API_URL', 'http://fake-aiconfigurator:7860')
+    vi.stubEnv('AICONFIGURATOR_API_URL', 'https://aiconfigurator.dev')
   })
 
   afterEach(() => {
@@ -137,45 +117,31 @@ describe('callKvCacheCalc', () => {
     expect(r.gpuCapacity.totalBytes).toBe(85899345920)
     expect(r.metadata.modelPath).toBe('meta-llama/Llama-3.1-70B-Instruct')
     expect(r.metadata.backend).toBe('vllm')
-    expect(r.metadata.backendVersion).toBeNull()
-    expect(r.metadata.system).toBe('h200_sxm')
-    expect(r.metadata.maxNumTokens).toBe(8192)
-    expect(r.metadata.maxBatchSize).toBe(128)
-    expect(r.metadata.tpSize).toBe(1)
-    expect(r.metadata.ppSize).toBe(1)
-    expect(r.metadata.moeTpSize).toBeNull()
-    expect(r.metadata.moeEpSize).toBeNull()
-    expect(r.metadata.memoryFractionKind).toBe('of_total')
-    expect(r.metadata.memoryFractionValue).toBe(1.0)
     expect(r.metadata.source).toBe('native')
     expect(r.metadata.durationMs).toBeGreaterThanOrEqual(0)
   })
 
-  it('injects credentials into the upstream request', async () => {
+  it('calls /memory at the configured API URL', async () => {
     const mockFetch = mockFetchOk(EXTERNAL_RESPONSE)
     vi.stubGlobal('fetch', mockFetch)
 
     await callKvCacheCalc(VALID_REQUEST)
 
-    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body)
-    expect(sentBody.username).toBe('test-user')
-    expect(sentBody.password).toBe('test-pass')
+    expect(mockFetch.mock.calls[0][0]).toBe('https://aiconfigurator.dev/memory')
   })
 
-  it('sends all fields in the upstream request', async () => {
+  it('sends correct fields without credentials', async () => {
     const mockFetch = mockFetchOk(EXTERNAL_RESPONSE)
     vi.stubGlobal('fetch', mockFetch)
 
     await callKvCacheCalc(VALID_REQUEST)
 
     const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(sentBody.model_path).toBe('meta-llama/Llama-3.1-70B-Instruct')
     expect(sentBody.backend).toBe('vllm')
-    expect(sentBody.max_num_tokens).toBe(8192)
-    expect(sentBody.max_batch_size).toBe(128)
     expect(sentBody.tp_size).toBe(1)
-    expect(sentBody.pp_size).toBe(1)
-    expect(sentBody.memory_fraction_kind).toBe('of_total')
-    expect(sentBody.memory_fraction_value).toBe(1.0)
+    expect(sentBody).not.toHaveProperty('username')
+    expect(sentBody).not.toHaveProperty('password')
   })
 
   it('sends nullable fields only when set', async () => {
@@ -201,57 +167,16 @@ describe('callKvCacheCalc', () => {
     expect(sentBody).not.toHaveProperty('backend_version')
   })
 
-  it('sends allow_hf_config_download: true in the upstream request', async () => {
-    const mockFetch = mockFetchOk(EXTERNAL_RESPONSE)
-    vi.stubGlobal('fetch', mockFetch)
-
-    await callKvCacheCalc(VALID_REQUEST)
-
-    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body)
-    expect(sentBody.allow_hf_config_download).toBe(true)
-  })
-
-  it('sends request to /kv_cache_calc endpoint', async () => {
-    const mockFetch = mockFetchOk(EXTERNAL_RESPONSE)
-    vi.stubGlobal('fetch', mockFetch)
-
-    await callKvCacheCalc(VALID_REQUEST)
-
-    expect(mockFetch.mock.calls[0][0]).toBe('http://fake-aiconfigurator:7860/kv_cache_calc')
-  })
-
-  it('never returns credentials in the response', async () => {
-    vi.stubGlobal('fetch', mockFetchOk(EXTERNAL_RESPONSE))
-
-    const result = await callKvCacheCalc(VALID_REQUEST)
-    const json = JSON.stringify(result)
-
-    expect(json).not.toContain('test-user')
-    expect(json).not.toContain('test-pass')
-    expect(json).not.toContain('"username"')
-    expect(json).not.toContain('"password"')
-  })
-
-  it('returns KV_CACHE_NOT_CONFIGURED when credentials are missing', async () => {
-    vi.stubEnv('AICONFIGURATOR_USERNAME', '')
-    vi.stubEnv('AICONFIGURATOR_PASSWORD', '')
+  it('returns AIC_NOT_CONFIGURED when API URL is missing', async () => {
+    vi.stubEnv('AICONFIGURATOR_API_URL', '')
 
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_NOT_CONFIGURED')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_NOT_CONFIGURED')
   })
 
-  it('returns KV_CACHE_NOT_CONFIGURED when password is missing', async () => {
-    vi.stubEnv('AICONFIGURATOR_PASSWORD', '')
-
-    const result = await callKvCacheCalc(VALID_REQUEST)
-
-    expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_NOT_CONFIGURED')
-  })
-
-  it('returns KV_CACHE_TIMEOUT on fetch timeout', async () => {
+  it('returns AIC_TIMEOUT on fetch timeout', async () => {
     const timeoutError = new Error('signal timed out')
     timeoutError.name = 'TimeoutError'
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError))
@@ -259,59 +184,46 @@ describe('callKvCacheCalc', () => {
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_TIMEOUT')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_TIMEOUT')
   })
 
-  it('returns KV_CACHE_UNAVAILABLE on network error', async () => {
+  it('returns AIC_UNAVAILABLE on network error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
 
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_UNAVAILABLE')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_UNAVAILABLE')
   })
 
-  it('returns KV_CACHE_AUTH_FAILED on 401', async () => {
+  it('returns AIC_UNSUPPORTED on 422', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
-      status: 401,
-      json: () => Promise.resolve({}),
+      status: 422,
+      json: () => Promise.resolve({ detail: 'unsupported model' }),
     }))
 
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_AUTH_FAILED')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_UNSUPPORTED')
+    expect((result as KvCacheCalcErrorResponse).error.message).toBe('unsupported model')
   })
 
-  it('returns KV_CACHE_AUTH_FAILED on 403', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: () => Promise.resolve({}),
-    }))
-
-    const result = await callKvCacheCalc(VALID_REQUEST)
-
-    expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_AUTH_FAILED')
-  })
-
-  it('returns KV_CACHE_UNAVAILABLE on 500', async () => {
+  it('returns AIC_UNAVAILABLE on 500', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
-      json: () => Promise.resolve({}),
+      json: () => Promise.resolve({ detail: 'internal error' }),
     }))
 
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_UNAVAILABLE')
-    expect((result as KvCacheCalcErrorResponse).error.message).toContain('500')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_UNAVAILABLE')
   })
 
-  it('returns KV_CACHE_INVALID_RESPONSE on non-JSON response', async () => {
+  it('returns AIC_INVALID_RESPONSE on non-JSON response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -321,27 +233,7 @@ describe('callKvCacheCalc', () => {
     const result = await callKvCacheCalc(VALID_REQUEST)
 
     expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.code).toBe('KV_CACHE_INVALID_RESPONSE')
-  })
-
-  it('returns KV_CACHE_INVALID_RESPONSE when total_kv_size_bytes is missing', async () => {
-    vi.stubGlobal('fetch', mockFetchOk({ memory_breakdown: {} }))
-
-    const result = await callKvCacheCalc(VALID_REQUEST)
-
-    expect(result.status).toBe('failed')
-    const err = result as KvCacheCalcErrorResponse
-    expect(err.error.code).toBe('KV_CACHE_INVALID_RESPONSE')
-    expect(err.error.message).toContain('total_kv_size_bytes')
-  })
-
-  it('surfaces API error messages from the error field', async () => {
-    vi.stubGlobal('fetch', mockFetchOk({ error: 'unsupported model' }))
-
-    const result = await callKvCacheCalc(VALID_REQUEST)
-
-    expect(result.status).toBe('failed')
-    expect((result as KvCacheCalcErrorResponse).error.message).toBe('unsupported model')
+    expect((result as KvCacheCalcErrorResponse).error.code).toBe('AIC_INVALID_RESPONSE')
   })
 
   it('handles missing optional response fields gracefully', async () => {

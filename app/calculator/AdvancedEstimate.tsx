@@ -73,12 +73,11 @@ function useCountUp(target: number, duration = 750, decimals = 0) {
 
 function friendlyErrorTitle(code: string | null): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT': return 'Request timed out';
-    case 'GPU_SIZER_NO_CONFIGURATION': return 'No valid configuration found';
-    case 'GPU_SIZER_UNAVAILABLE': return 'Sizing service unavailable';
-    case 'GPU_SIZER_AUTH_FAILED': return 'Service authentication error';
-    case 'GPU_SIZER_NOT_CONFIGURED': return 'Service not configured';
-    case 'GPU_SIZER_INVALID_RESPONSE': return 'Unexpected response';
+    case 'AIC_TIMEOUT': return 'Request timed out';
+    case 'AIC_NO_CONFIGURATION': return 'No valid configuration found';
+    case 'AIC_UNAVAILABLE': return 'Sizing service unavailable';
+    case 'AIC_NOT_CONFIGURED': return 'Service not configured';
+    case 'AIC_INVALID_RESPONSE': return 'Unexpected response';
     case 'INVALID_REQUEST': return 'Invalid input';
     case 'NETWORK_ERROR': return 'Connection error';
     default: return 'Something went wrong';
@@ -87,17 +86,15 @@ function friendlyErrorTitle(code: string | null): string {
 
 function friendlyErrorMessage(code: string | null, raw: string): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT':
+    case 'AIC_TIMEOUT':
       return 'The sizing engine took too long to respond. This can happen with very large models or complex configurations.';
-    case 'GPU_SIZER_NO_CONFIGURATION':
-      return 'This model and GPU combination doesn’t have a valid sizing configuration. The engine couldn’t find a workable setup.';
-    case 'GPU_SIZER_UNAVAILABLE':
-      return 'The GPU sizing service is temporarily unreachable. This is usually a transient issue.';
-    case 'GPU_SIZER_AUTH_FAILED':
-      return 'The sizing service rejected our credentials. Please contact your administrator.';
-    case 'GPU_SIZER_NOT_CONFIGURED':
-      return 'The sizing service hasn’t been set up yet. Please contact your administrator.';
-    case 'GPU_SIZER_INVALID_RESPONSE':
+    case 'AIC_NO_CONFIGURATION':
+      return 'No valid GPU configuration found for this model and hardware combination.';
+    case 'AIC_UNAVAILABLE':
+      return 'The AIConfigurator service is temporarily unreachable. This is usually a transient issue.';
+    case 'AIC_NOT_CONFIGURED':
+      return 'The AIConfigurator service URL is not configured.';
+    case 'AIC_INVALID_RESPONSE':
       return 'The sizing engine returned an unexpected response format.';
     case 'INVALID_REQUEST':
       return 'Some input values are missing or invalid. Please check your model name and parameters.';
@@ -110,11 +107,11 @@ function friendlyErrorMessage(code: string | null, raw: string): string {
 
 function friendlyErrorHint(code: string | null): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT':
+    case 'AIC_TIMEOUT':
       return 'Try again, or try a smaller model or simpler configuration.';
-    case 'GPU_SIZER_NO_CONFIGURATION':
+    case 'AIC_NO_CONFIGURATION':
       return 'Try a different GPU system, or reduce the input token length (ISL).';
-    case 'GPU_SIZER_UNAVAILABLE':
+    case 'AIC_UNAVAILABLE':
       return 'Wait a moment and try again.';
     case 'NETWORK_ERROR':
       return 'Check your connection and try again.';
@@ -187,7 +184,7 @@ export default function AdvancedEstimate() {
   React.useEffect(() => {
     const fetchPricing = async () => {
       try {
-        const res = await fetch('/api/v1/gpus?live_pricing=true');
+        const res = await fetch('/api/gpus?live_pricing=true');
         if (!res.ok) return;
         const data = await res.json();
         if (!data?.data?.gpus) return;
@@ -218,7 +215,7 @@ export default function AdvancedEstimate() {
   const catalogModel = MODEL_CATALOG.find(m => m.hfId === model);
 
   const handleCalculate = () => {
-    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft });
+    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32 });
   };
 
   // Local memory analysis using the same engine as Quick Estimate
@@ -667,7 +664,7 @@ export default function AdvancedEstimate() {
           {debugOpen && (
             <div className={styles.debugBody}>
               <div className={styles.debugPane}>
-                <div className={styles.debugPaneHeader}>Request → POST /api/v1/gpu-sizer</div>
+                <div className={styles.debugPaneHeader}>Request → POST /api/recommend</div>
                 <pre className={styles.debugPre}>
                   {JSON.stringify(debugRequest, null, 2)}
                 </pre>

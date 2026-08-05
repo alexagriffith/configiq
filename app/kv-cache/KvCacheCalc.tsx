@@ -74,7 +74,7 @@ export default function KvCacheCalc() {
     const t0 = performance.now()
 
     try {
-      const res = await fetch('/api/v1/kv-cache-calc', {
+      const res = await fetch('/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -472,7 +472,7 @@ export default function KvCacheCalc() {
           {debugOpen && (
             <div className={styles.debugBody}>
               <div className={styles.debugPane}>
-                <div className={styles.debugPaneHeader}>Request → POST /api/v1/kv-cache-calc</div>
+                <div className={styles.debugPaneHeader}>Request → POST /api/memory</div>
                 <pre className={styles.debugPre}>
                   {JSON.stringify(debugRequest, null, 2)}
                 </pre>

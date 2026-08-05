@@ -1,4 +1,4 @@
-// POST /api/v1/config
+// POST /api/config
 // Main inference configuration endpoint
 
 import { NextRequest, NextResponse } from 'next/server'
