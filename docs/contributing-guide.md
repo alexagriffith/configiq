@@ -19,8 +19,8 @@ You will also need:
 
 ```bash
 # Clone the repo
-git clone https://github.com/nb-qbits/gpu-calc-v2.git
-cd gpu-calc
+git clone https://github.com/openshift-psap/configiq.git
+cd configiq
 
 # Install dependencies (also wires up pre-commit hooks automatically)
 npm install

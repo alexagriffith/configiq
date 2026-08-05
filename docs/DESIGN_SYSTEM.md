@@ -1,6 +1,6 @@
 # Design System Guidelines
 
-This document defines the repeatable design patterns, component guidelines, and styling rules for gpu-calc. Follow these standards for all new pages and components to maintain consistency.
+This document defines the repeatable design patterns, component guidelines, and styling rules for ConfigIQ. Follow these standards for all new pages and components to maintain consistency.
 
 ## Typography System
 

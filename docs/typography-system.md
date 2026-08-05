@@ -1,8 +1,8 @@
 # Typography & Color System Implementation
 
-## ✅ EXACT Implementation of gpu-calc Specification
+## ✅ EXACT Implementation of ConfigIQ Specification
 
-This document describes the high-legibility typography and color system now implemented in gpu-calc, following the EXACT specification provided.
+This document describes the high-legibility typography and color system now implemented in ConfigIQ, following the EXACT specification provided.
 
 ---
 
@@ -334,7 +334,7 @@ white-space: nowrap;
 - High-contrast links (#0066cc)
 
 ### **5. Professional Appearance**
-- Matches gpu-calc design system
+- Matches ConfigIQ design system
 - No visual noise from varied grays
 - Proper typographic hierarchy
 - Polished, consistent feel

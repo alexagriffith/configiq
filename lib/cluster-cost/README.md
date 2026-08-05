@@ -193,7 +193,7 @@ Runs 3 test scenarios:
 
 ## Integration with GPU Calc
 
-This module is designed to plug into the main gpu-calc workflow:
+This module is designed to plug into the main ConfigIQ workflow:
 
 ```
 Workload Module (Quick Estimate)
