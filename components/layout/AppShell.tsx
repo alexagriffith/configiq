@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/redhat-hat.svg" alt="" width={40} height={30} aria-hidden="true" />
+            <img src="/config-iq-logo.svg" alt="" width={42} height={42} aria-hidden="true" />
             <span
               style={{
                 fontFamily: "var(--font-display)",
@@ -55,27 +55,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 letterSpacing: "-0.02em",
               }}
             >
-              Config<span style={{ color: "#ee0000" }}>IQ</span>
+              Config<span style={{ color: "#4dabf7" }}>IQ</span>
             </span>
             <span style={{
-              display: 'flex',
-              flexDirection: 'column' as const,
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              color: 'rgba(255,255,255,0.5)',
+              letterSpacing: '0.01em',
               marginLeft: 16,
-              gap: 2,
-            }}>
-              <span style={{
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                color: 'rgba(255,255,255,0.7)',
-                letterSpacing: '0.01em',
-              }}>(formerly GPUCalc)</span>
-              <span style={{
-                fontSize: '0.75rem',
-                fontWeight: 500,
-                color: 'rgba(255,255,255,0.7)',
-                letterSpacing: '0.01em',
-              }}>An internal community project — not an official Red Hat product.</span>
-            </span>
+            }}>LLM inference sizing</span>
           </Link>
         </MastheadBrand>
       </MastheadMain>
