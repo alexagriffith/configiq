@@ -112,7 +112,8 @@ export async function callKvCacheCalc(
       if (typeof body.detail === 'string') detail = body.detail
     } catch { /* ignore parse errors */ }
 
-    return makeError(requestId, 'AIC_UNAVAILABLE', detail)
+    const code = response.status === 422 ? 'AIC_UNSUPPORTED' : 'AIC_UNAVAILABLE'
+    return makeError(requestId, code, detail)
   }
 
   let rawData: Record<string, unknown>
