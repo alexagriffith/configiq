@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Alert, Spinner } from '@patternfly/react-core'
+import { Alert, Label, Spinner } from '@patternfly/react-core'
+import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/app/quick-estimate/quickEstimateHelpers'
@@ -139,8 +140,14 @@ export default function KvCacheCalc() {
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
               </datalist>
               {model && (
-                <span className={`${styles.modelChip} ${catalogMatch ? styles.modelChipCatalog : styles.modelChipCustom}`}>
-                  {catalogMatch ? 'In catalog' : catalogLoading ? 'Loading...' : 'Custom model'}
+                <span className={styles.modelChip}>
+                  {catalogMatch ? (
+                    <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
+                  ) : catalogLoading ? (
+                    <Label color="blue" isCompact>Loading...</Label>
+                  ) : (
+                    <Label color="grey" isCompact>Custom model</Label>
+                  )}
                 </span>
               )}
             </div>
