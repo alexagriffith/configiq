@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 export interface GpuOption {
   systemId: string
   label: string
+  vendor: string
   vramGb: number | null
   bandwidthTbps: number | null
   tflopsBf16: number | null
@@ -21,6 +22,7 @@ function mapGpu(g: Record<string, unknown>): GpuOption {
   return {
     systemId: (g.system ?? '') as string,
     label: (g.name ?? g.system ?? '') as string,
+    vendor: (g.vendor ?? '') as string,
     vramGb: typeof g.mem_capacity === 'number' ? g.mem_capacity : null,
     bandwidthTbps: typeof g.mem_bw === 'number' ? g.mem_bw : null,
     tflopsBf16: typeof g.bfloat16_tc_flops === 'number' ? g.bfloat16_tc_flops : null,

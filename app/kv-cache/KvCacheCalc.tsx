@@ -3,6 +3,8 @@
 import * as React from 'react'
 import { Alert, Spinner } from '@patternfly/react-core'
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
+import { ComboBox } from '@/components/ModelComboBox/ModelComboBox'
+import type { ComboBoxItem } from '@/components/ModelComboBox/ModelComboBox'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
@@ -18,6 +20,19 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 
 export default function KvCacheCalc() {
   const { gpuOptions, modelOptions, isLoading: catalogLoading } = useAicCatalog()
+
+  const modelItems: ComboBoxItem[] = React.useMemo(() =>
+    modelOptions.map(m => {
+      const slash = m.indexOf('/')
+      return { value: m, label: m, group: slash > 0 ? m.slice(0, slash) : '' }
+    }), [modelOptions])
+
+  const gpuItems: ComboBoxItem[] = React.useMemo(() =>
+    gpuOptions.map(g => ({
+      value: g.systemId,
+      label: g.label,
+      group: g.vendor,
+    })), [gpuOptions])
 
   const [model, setModel] = React.useState('')
   const [system, setSystem] = React.useState('')
@@ -54,8 +69,6 @@ export default function KvCacheCalc() {
       setModel(modelOptions[0])
     }
   }, [modelOptions, model])
-
-  const catalogMatch = modelOptions.includes(model)
 
   async function handleCalculate() {
     setLoading(true)
@@ -135,39 +148,25 @@ export default function KvCacheCalc() {
         <div className={styles.inputRow}>
           <div className={styles.field}>
             <label htmlFor="kv-model" className={styles.fieldLabel}>Model</label>
-            <div className={styles.modelInputWrapper}>
-              <input
-                type="text"
-                id="kv-model"
-                list="kv-models"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                placeholder="Type model name or select from dropdown..."
-                className={styles.modelInput}
-              />
-              <datalist id="kv-models">
-                {modelOptions.map(m => <option key={m} value={m} />)}
-              </datalist>
-              {model && (
-                <span className={`${styles.modelChip} ${catalogMatch ? styles.modelChipCatalog : styles.modelChipCustom}`}>
-                  {catalogMatch ? 'In catalog' : 'Custom model'}
-                </span>
-              )}
-            </div>
+            <ComboBox
+              id="kv-model"
+              value={model}
+              onChange={setModel}
+              items={modelItems}
+              placeholder="Type or select a model..."
+              allowCustom
+            />
           </div>
 
           <div className={styles.field}>
             <label htmlFor="kv-gpu" className={styles.fieldLabel}>GPU system</label>
-            <select
+            <ComboBox
               id="kv-gpu"
               value={system}
-              onChange={e => setSystem(e.target.value)}
-              className={styles.gpuSelect}
-            >
-              {gpuOptions.map(g => (
-                <option key={g.systemId} value={g.systemId}>{g.label}</option>
-              ))}
-            </select>
+              onChange={setSystem}
+              items={gpuItems}
+              placeholder="Type or select a GPU..."
+            />
           </div>
 
           <button

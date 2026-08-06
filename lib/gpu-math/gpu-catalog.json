@@ -1,6 +1,6 @@
 [
   {
-    "id": "a100-40gb",
+    "id": "a100_pcie",
     "name": "A100",
     "display_name": "NVIDIA A100 40GB",
     "sizer_system_id": "a100_40g_sxm",
@@ -18,7 +18,7 @@
     "color": "#7ab3e0"
   },
   {
-    "id": "a100-80gb",
+    "id": "a100_sxm",
     "name": "A100 80GB",
     "display_name": "NVIDIA A100 80GB",
     "sizer_system_id": "a100_sxm",
@@ -36,7 +36,7 @@
     "color": "#7ab3e0"
   },
   {
-    "id": "h100-80gb",
+    "id": "h100_sxm",
     "name": "H100",
     "display_name": "NVIDIA H100 SXM",
     "sizer_system_id": "h100_sxm",
@@ -54,7 +54,7 @@
     "color": "#5b9bd5"
   },
   {
-    "id": "h200-141gb",
+    "id": "h200_sxm",
     "name": "H200",
     "display_name": "NVIDIA H200 SXM",
     "sizer_system_id": "h200_sxm",
@@ -72,7 +72,7 @@
     "color": "#5b9bd5"
   },
   {
-    "id": "h20-96gb",
+    "id": "h20",
     "name": "H20",
     "display_name": "NVIDIA H20",
     "sizer_system_id": null,
@@ -91,7 +91,7 @@
     "color": "#6aa8dc"
   },
   {
-    "id": "b100-192gb",
+    "id": "b100",
     "name": "B100",
     "display_name": "NVIDIA B100",
     "sizer_system_id": null,
@@ -109,7 +109,7 @@
     "color": "#4285c8"
   },
   {
-    "id": "b200-192gb",
+    "id": "b200_sxm",
     "name": "B200",
     "display_name": "NVIDIA B200",
     "sizer_system_id": null,
@@ -127,7 +127,7 @@
     "color": "#3575bc"
   },
   {
-    "id": "b300-288gb",
+    "id": "b300_sxm",
     "name": "B300",
     "display_name": "NVIDIA B300",
     "sizer_system_id": null,
@@ -145,7 +145,7 @@
     "color": "#2866b0"
   },
   {
-    "id": "b30a-120gb",
+    "id": "b30a",
     "name": "B30A",
     "display_name": "NVIDIA B30A",
     "sizer_system_id": null,
@@ -163,7 +163,7 @@
     "color": "#4d8fd4"
   },
   {
-    "id": "l40s-48gb",
+    "id": "l40s",
     "name": "L40S",
     "display_name": "NVIDIA L40S 48GB",
     "sizer_system_id": "l40s",
@@ -181,7 +181,7 @@
     "color": "#7ab3e0"
   },
   {
-    "id": "mi250x-128gb",
+    "id": "mi250x",
     "name": "MI250X",
     "display_name": "AMD MI250X",
     "sizer_system_id": null,
@@ -199,7 +199,7 @@
     "color": "#e07878"
   },
   {
-    "id": "mi300x-192gb",
+    "id": "mi300x",
     "name": "MI300X",
     "display_name": "AMD MI300X 192GB",
     "sizer_system_id": "mi300x",
@@ -217,7 +217,7 @@
     "color": "#cc4444"
   },
   {
-    "id": "mi325x-256gb",
+    "id": "mi325x",
     "name": "MI325X",
     "display_name": "AMD MI325X",
     "sizer_system_id": null,
@@ -235,7 +235,7 @@
     "color": "#c03838"
   },
   {
-    "id": "mi350x-288gb",
+    "id": "mi350x",
     "name": "MI350X",
     "display_name": "AMD MI350X",
     "sizer_system_id": null,
@@ -253,7 +253,7 @@
     "color": "#b42020"
   },
   {
-    "id": "mi300a-128gb",
+    "id": "mi300a",
     "name": "MI300A",
     "display_name": "AMD MI300A",
     "sizer_system_id": null,
@@ -271,7 +271,7 @@
     "color": "#d96060"
   },
   {
-    "id": "rtx-pro-6000-96gb",
+    "id": "rtx_pro_6000_server",
     "name": "RTX PRO 6000",
     "display_name": "NVIDIA RTX PRO 6000 Server",
     "sizer_system_id": "rtx_pro_6000_server",

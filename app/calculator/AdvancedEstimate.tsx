@@ -14,6 +14,8 @@ import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-i
 
 import styles from './AdvancedEstimate.module.css';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
+import { ComboBox } from '@/components/ModelComboBox/ModelComboBox';
+import type { ComboBoxItem } from '@/components/ModelComboBox/ModelComboBox';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
@@ -127,6 +129,19 @@ function friendlyErrorHint(code: string | null): string {
 export default function AdvancedEstimate() {
   // AIC catalog
   const { gpuOptions, modelOptions, isLoading: catalogLoading } = useAicCatalog();
+
+  const modelItems: ComboBoxItem[] = React.useMemo(() =>
+    modelOptions.map(m => {
+      const slash = m.indexOf('/');
+      return { value: m, label: m, group: slash > 0 ? m.slice(0, slash) : '' };
+    }), [modelOptions]);
+
+  const gpuItems: ComboBoxItem[] = React.useMemo(() =>
+    gpuOptions.map(g => ({
+      value: g.systemId,
+      label: g.label,
+      group: g.vendor,
+    })), [gpuOptions]);
 
   // Input state
   const [model, setModel] = React.useState('meta-llama/Llama-3.1-70B-Instruct');
@@ -258,49 +273,23 @@ export default function AdvancedEstimate() {
               Model — Hugging Face ID
               <StatusChip status={modelStatus} />
             </label>
-            <div className={styles.modelInputWrapper}>
-              <input
-                type="text"
-                className={styles.modelInput}
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                list="model-options"
-                placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
-              />
-              <datalist id="model-options">
-                {modelOptions.map(m => <option key={m} value={m} />)}
-              </datalist>
-              <div className={styles.autoChipWrapper}>
-                {modelStatus === 'catalog' && (
-                  <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
-                )}
-                {modelStatus === 'fetching' && (
-                  <Label color="blue" isCompact>Fetching...</Label>
-                )}
-                {modelStatus === 'fetched' && (
-                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
-                )}
-                {modelStatus === 'error' && (
-                  <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>
-                )}
-              </div>
-            </div>
-            <div className={styles.helperText}>
-              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
-            </div>
+            <ComboBox
+              value={model}
+              onChange={setModel}
+              items={modelItems}
+              placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+              allowCustom
+            />
           </div>
 
           <div>
             <label className={styles.fieldLabel}>GPU system</label>
-            <select
-              className={styles.gpuSelect}
+            <ComboBox
               value={gpuSystem}
-              onChange={e => setGpuSystem(e.target.value)}
-            >
-              {gpuOptions.map(g => (
-                <option key={g.systemId} value={g.systemId}>{g.label}</option>
-              ))}
-            </select>
+              onChange={setGpuSystem}
+              items={gpuItems}
+              placeholder="Type or select a GPU..."
+            />
             {currentGpu && (
               <div className={styles.helperText}>
                 {currentGpu.vramGb != null && <>{currentGpu.vramGb} GB · </>}

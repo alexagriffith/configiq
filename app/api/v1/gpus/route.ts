@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { ApiErrors } from '@/lib/api/errors'
-import { fetchHardwareList, fetchHardwareSpec } from '@/lib/api/gpus'
+import { fetchHardwareDetailed } from '@/lib/api/gpus'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,14 +12,11 @@ export async function GET(req: NextRequest) {
     // Try AIC first unless the caller explicitly requests local data
     try {
         console.log('[GPUs API] Fetching hardware list from AIConfigurator...')
-        const systems = await fetchHardwareList()
-        console.log(`[GPUs API] Received ${systems.length} systems from AIConfigurator`)
-
-        const specs = await Promise.all(systems.map(s => fetchHardwareSpec(s)))
-        console.log(`[GPUs API] Fetched specs for ${specs.length} systems`)
+        const gpus = await fetchHardwareDetailed()
+        console.log(`[GPUs API] Received ${gpus.length} systems from AIConfigurator`)
 
         return NextResponse.json(
-          { success: true, data: { gpus: specs, count: specs.length }, source: 'aiconfigurator' },
+          { success: true, data: { gpus, count: gpus.length }, source: 'aiconfigurator' },
           {
             status: 200,
             headers: {

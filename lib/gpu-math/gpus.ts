@@ -97,7 +97,7 @@ export function getGpusByMinVram(minVram: number): GpuSpec[] {
 }
 
 // Default GPU for initial state
-export const DEFAULT_GPU = GPU_CATALOG.find(gpu => gpu.id === 'h100-80gb') || GPU_CATALOG[0]
+export const DEFAULT_GPU = GPU_CATALOG.find(gpu => gpu.id === 'h100_sxm') || GPU_CATALOG[0]
 
 // GPUs available for Quick Estimate (all catalog GPUs with a display name)
 export const GPU_OPTIONS_QE = GPU_CATALOG.map(g => ({
