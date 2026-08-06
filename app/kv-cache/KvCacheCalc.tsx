@@ -24,9 +24,11 @@ export default function KvCacheCalc() {
   const MODEL_OPTIONS = aicModels
 
   const [model, setModel] = React.useState('Qwen/Qwen3-32B')
-  const [system, setSystem] = React.useState(GPU_OPTIONS_KV[0]?.systemId ?? '')
+  const [system, setSystem] = React.useState(
+    GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
+  )
   const [backend, setBackend] = React.useState('vllm')
-  const [backendVersion, setBackendVersion] = React.useState('')
+  const [backendVersion, setBackendVersion] = React.useState('0.24.0')
   const [maxNumTokens, setMaxNumTokens] = React.useState(8192)
   const [maxBatchSize, setMaxBatchSize] = React.useState(128)
   const [tpSize, setTpSize] = React.useState(1)
