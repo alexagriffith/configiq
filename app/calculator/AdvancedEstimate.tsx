@@ -316,7 +316,7 @@ export default function AdvancedEstimate() {
             onClick={handleCalculate}
             disabled={isLoading || !model.includes('/')}
           >
-            {isLoading ? 'Calculating...' : 'Calculate GPU Requirement'}
+            {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
         </div>
       </div>
