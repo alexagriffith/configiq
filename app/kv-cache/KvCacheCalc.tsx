@@ -127,7 +127,7 @@ export default function KvCacheCalc() {
       <div className={styles.inputCard}>
         <div className={styles.inputRow}>
           <div className={styles.field}>
-            <label htmlFor="kv-model" className={styles.fieldLabel}>Model</label>
+            <label htmlFor="kv-model" className={styles.fieldLabel}>Model — Hugging Face ID</label>
             <div className={styles.modelInputWrapper}>
               <input
                 type="text"
