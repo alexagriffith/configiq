@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import {
   HomeIcon,
   BoltIcon,
+  CalculatorIcon,
   SlidersHIcon,
   CubesIcon,
   HistoryIcon,
@@ -150,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isActive={pathname === "/quick-estimate"}
             />
             <NavItemWithIcon
-              icon={BoltIcon}
+              icon={CalculatorIcon}
               label="KV cache calculator"
               href="/kv-cache"
               isActive={pathname === "/kv-cache"}
