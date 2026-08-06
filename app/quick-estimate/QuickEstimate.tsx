@@ -981,7 +981,7 @@ export default function QuickEstimate() {
 
           {/* Column 2: GPU target */}
           <div className={styles.field}>
-            <label className={styles.fieldLabel} htmlFor="qe-gpu">GPU target</label>
+            <label className={styles.fieldLabel} htmlFor="qe-gpu">GPU system</label>
             <select
               id="qe-gpu"
               value={gpu}
