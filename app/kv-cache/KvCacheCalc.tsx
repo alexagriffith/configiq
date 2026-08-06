@@ -1,12 +1,14 @@
 'use client'
 
 import * as React from 'react'
-import { Alert, Spinner } from '@patternfly/react-core'
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import { ComboBox } from '@/components/ModelComboBox/ModelComboBox'
 import type { ComboBoxItem } from '@/components/ModelComboBox/ModelComboBox'
-import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/lib/hooks/useCountUp'
+import { Alert, Label, Spinner } from '@patternfly/react-core'
+import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
+import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
+import { formatBytes } from '@/lib/utils/format'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
 
@@ -33,11 +35,14 @@ export default function KvCacheCalc() {
       label: g.label,
       group: g.vendor,
     })), [gpuOptions])
+  const MODEL_OPTIONS = modelOptions
 
-  const [model, setModel] = React.useState('')
-  const [system, setSystem] = React.useState('')
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B')
+  const [system, setSystem] = React.useState(
+    GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
+  )
   const [backend, setBackend] = React.useState('vllm')
-  const [backendVersion, setBackendVersion] = React.useState('')
+  const [backendVersion, setBackendVersion] = React.useState('0.24.0')
   const [maxNumTokens, setMaxNumTokens] = React.useState(8192)
   const [maxBatchSize, setMaxBatchSize] = React.useState(128)
   const [tpSize, setTpSize] = React.useState(1)
@@ -69,6 +74,7 @@ export default function KvCacheCalc() {
       setModel(modelOptions[0])
     }
   }, [modelOptions, model])
+  const catalogMatch = MODEL_OPTIONS.includes(model)
 
   async function handleCalculate() {
     setLoading(true)
@@ -99,7 +105,7 @@ export default function KvCacheCalc() {
     const t0 = performance.now()
 
     try {
-      const res = await fetch('/api/v1/kv-cache-calc', {
+      const res = await fetch('/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -147,15 +153,34 @@ export default function KvCacheCalc() {
       <div className={styles.inputCard}>
         <div className={styles.inputRow}>
           <div className={styles.field}>
-            <label htmlFor="kv-model" className={styles.fieldLabel}>Model</label>
-            <ComboBox
-              id="kv-model"
-              value={model}
-              onChange={setModel}
-              items={modelItems}
-              placeholder="Type or select a model..."
-              allowCustom
-            />
+            <label htmlFor="kv-model" className={styles.fieldLabel}>Model — Hugging Face ID</label>
+            <div className={styles.modelInputWrapper}>
+              <input
+                type="text"
+                id="kv-model"
+                list="kv-models"
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                placeholder="Type model name or select from dropdown..."
+                className={styles.modelInput}
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <datalist id="kv-models">
+                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
+              </datalist>
+              {model && (
+                <span className={styles.modelChip}>
+                  {catalogMatch ? (
+                    <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
+                  ) : catalogLoading ? (
+                    <Label color="blue" isCompact>Loading...</Label>
+                  ) : (
+                    <Label color="grey" isCompact>Custom model</Label>
+                  )}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className={styles.field}>
@@ -483,7 +508,7 @@ export default function KvCacheCalc() {
           {debugOpen && (
             <div className={styles.debugBody}>
               <div className={styles.debugPane}>
-                <div className={styles.debugPaneHeader}>Request → POST /api/v1/kv-cache-calc</div>
+                <div className={styles.debugPaneHeader}>Request → POST /api/memory</div>
                 <pre className={styles.debugPre}>
                   {JSON.stringify(debugRequest, null, 2)}
                 </pre>

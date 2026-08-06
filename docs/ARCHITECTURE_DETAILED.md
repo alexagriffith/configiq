@@ -1,6 +1,6 @@
 # GPU Calc - Detailed Architecture
 
-This document provides comprehensive component diagrams, data flow visualizations, and module relationships for the gpu-calc system.
+This document provides comprehensive component diagrams, data flow visualizations, and module relationships for the ConfigIQ system.
 
 > **Note**: This supplements the high-level [architecture.md](./architecture.md) with detailed diagrams showing how components interact.
 

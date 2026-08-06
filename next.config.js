@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  output: 'standalone',
   transpilePackages: [
     "@patternfly/react-core",
     "@patternfly/react-charts",

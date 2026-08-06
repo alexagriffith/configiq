@@ -1,5 +1,6 @@
 import type { GpuSpec } from '../gpu-math/gpus'
 import type { ModelSpec } from '../gpu-math/models'
+import type { InferenceConfigResult } from '../gpu-math/inference-config/types'
 
 export function formatGpuCatalogResponse(gpus: GpuSpec[]) {
   return {
@@ -37,5 +38,12 @@ export function formatModelCatalogResponse(models: ModelSpec[]) {
       })),
       count: models.length
     }
+  }
+}
+
+export function formatInferenceConfigResponse(result: InferenceConfigResult) {
+  return {
+    success: true,
+    data: result,
   }
 }

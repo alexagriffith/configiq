@@ -9,6 +9,8 @@ export interface GpuOption {
   vramGb: number | null
   bandwidthTbps: number | null
   tflopsBf16: number | null
+  tdpWatts: number | null
+  gpusPerNode: number | null
 }
 
 export interface AicCatalog {
@@ -18,49 +20,81 @@ export interface AicCatalog {
   error: string | null
 }
 
-function mapGpu(g: Record<string, unknown>): GpuOption {
+const GB = 1_073_741_824
+
+function mapSystem(s: Record<string, unknown>): GpuOption {
+  const memBytes = typeof s.memory_bytes === 'number' ? s.memory_bytes : 0
   return {
-    systemId: (g.system ?? '') as string,
-    label: (g.name ?? g.system ?? '') as string,
-    vendor: (g.vendor ?? '') as string,
-    vramGb: typeof g.mem_capacity === 'number' ? g.mem_capacity : null,
-    bandwidthTbps: typeof g.mem_bw === 'number' ? g.mem_bw : null,
-    tflopsBf16: typeof g.bfloat16_tc_flops === 'number' ? g.bfloat16_tc_flops : null,
+    systemId: typeof s.id === 'string' ? s.id : '',
+    label: typeof s.name === 'string' ? s.name : (typeof s.id === 'string' ? s.id : ''),
+    vendor: typeof s.vendor === 'string' ? s.vendor : '',
+    vramGb: memBytes > 0 ? Math.round(memBytes / GB) : null,
+    bandwidthTbps: null,
+    tflopsBf16: null,
+    tdpWatts: typeof s.tdp_watts === 'number' ? s.tdp_watts : null,
+    gpusPerNode: typeof s.gpus_per_node === 'number' ? s.gpus_per_node : null,
   }
 }
 
+// Module-level cache — shared across all components, survives re-renders
+let cachedGpus: GpuOption[] | null = null
+let cachedModels: string[] | null = null
+let fetchPromise: Promise<void> | null = null
+
 export function useAicCatalog(): AicCatalog {
-  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>([])
-  const [modelOptions, setModelOptions] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>(cachedGpus ?? [])
+  const [modelOptions, setModelOptions] = useState<string[]>(cachedModels ?? [])
+  const [isLoading, setIsLoading] = useState(cachedGpus === null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (cachedGpus !== null && cachedModels !== null) {
+      setGpuOptions(cachedGpus)
+      setModelOptions(cachedModels)
+      setIsLoading(false)
+      return
+    }
+
     let cancelled = false
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://www.aiconfigurator.dev'
 
     async function fetchCatalog() {
+      if (!fetchPromise) {
+        fetchPromise = (async () => {
+          const [systemsRes, modelsRes] = await Promise.all([
+            fetch(`${aicUrl}/systems?include=specs`),
+            fetch(`${aicUrl}/models`),
+          ])
+
+          if (!systemsRes.ok) throw new Error(`Systems fetch failed (${systemsRes.status})`)
+          if (!modelsRes.ok) throw new Error(`Models fetch failed (${modelsRes.status})`)
+
+          const systemsData = await systemsRes.json()
+          const modelsData = await modelsRes.json()
+
+          const systems = (systemsData.systems ?? []) as Record<string, unknown>[]
+          const gpus = systems.map(mapSystem)
+
+          const models = (modelsData.models ?? []) as unknown[]
+          const modelList = models.filter((m): m is string => typeof m === 'string')
+
+          if (gpus.length === 0 || modelList.length === 0) {
+            throw new Error('AIC returned empty catalog')
+          }
+
+          cachedGpus = gpus
+          cachedModels = modelList
+        })()
+      }
+
       try {
-        const [gpuRes, modelRes] = await Promise.all([
-          fetch('/api/v1/gpus'),
-          fetch('/api/v1/models'),
-        ])
-
-        if (!gpuRes.ok) throw new Error(`GPU catalog fetch failed (${gpuRes.status})`)
-        if (!modelRes.ok) throw new Error(`Model catalog fetch failed (${modelRes.status})`)
-
-        const gpuData = await gpuRes.json()
-        const modelData = await modelRes.json()
-
-        if (cancelled) return
-
-        const gpus = ((gpuData.data?.gpus ?? []) as Record<string, unknown>[]).map(mapGpu)
-        setGpuOptions(gpus)
-
-        const models = ((modelData.data?.models ?? []) as unknown[]).map(m =>
-          typeof m === 'string' ? m : ''
-        ).filter(Boolean)
-        setModelOptions(models)
+        await fetchPromise
+        if (!cancelled) {
+          setGpuOptions(cachedGpus!)
+          setModelOptions(cachedModels!)
+        }
       } catch (err) {
+        fetchPromise = null
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to fetch catalog')
         }

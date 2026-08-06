@@ -69,8 +69,8 @@ export async function callKvCacheCalc(
   const password = process.env.AICONFIGURATOR_PASSWORD
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
-  if (!username || !password) {
-    return makeError(requestId, 'KV_CACHE_NOT_CONFIGURED', 'KV cache calculator service is not configured')
+  if (!baseUrl) {
+    return makeError(requestId, 'AIC_NOT_CONFIGURED', 'AIConfigurator API URL is not configured')
   }
 
   const externalPayload: Record<string, unknown> = {
@@ -83,9 +83,6 @@ export async function callKvCacheCalc(
     pp_size: request.pp_size,
     memory_fraction_kind: request.memory_fraction_kind,
     memory_fraction_value: request.memory_fraction_value,
-    allow_hf_config_download: true,
-    username,
-    password,
   }
   if (request.backend_version) externalPayload.backend_version = request.backend_version
   if (request.moe_tp_size != null) externalPayload.moe_tp_size = request.moe_tp_size
@@ -93,7 +90,7 @@ export async function callKvCacheCalc(
 
   let response: Response
   try {
-    response = await fetch(`${baseUrl}/kv_cache_calc`, {
+    response = await fetch(`${baseUrl}/memory`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,40 +102,31 @@ export async function callKvCacheCalc(
   } catch (err: unknown) {
     const durationMs = Math.round(performance.now() - startTime)
     if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
-      return makeError(requestId, 'KV_CACHE_TIMEOUT', `The KV cache calculator did not respond within ${timeoutSeconds} seconds (waited ${durationMs}ms)`)
+      return makeError(requestId, 'AIC_TIMEOUT', `The AIConfigurator API did not respond within ${timeoutSeconds} seconds (waited ${durationMs}ms)`)
     }
-    return makeError(requestId, 'KV_CACHE_UNAVAILABLE', 'KV cache calculator service is unreachable')
-  }
-
-  if (response.status === 401 || response.status === 403) {
-    return makeError(requestId, 'KV_CACHE_AUTH_FAILED', 'Authentication with KV cache calculator service failed')
+    return makeError(requestId, 'AIC_UNAVAILABLE', 'AIConfigurator API is unreachable')
   }
 
   if (!response.ok) {
-    return makeError(requestId, 'KV_CACHE_UNAVAILABLE', `KV cache calculator service returned HTTP ${response.status}`)
+    let detail = `AIConfigurator API returned HTTP ${response.status}`
+    try {
+      const body = await response.json()
+      if (typeof body.detail === 'string') detail = body.detail
+    } catch { /* ignore parse errors */ }
+
+    const code = response.status === 422 ? 'AIC_UNSUPPORTED' : 'AIC_UNAVAILABLE'
+    return makeError(requestId, code, detail)
   }
 
   let rawData: Record<string, unknown>
   try {
     const parsed = await response.json()
     if (parsed == null || typeof parsed !== 'object') {
-      return makeError(requestId, 'KV_CACHE_INVALID_RESPONSE', 'No valid KV cache data found for this model and hardware combination.')
+      return makeError(requestId, 'AIC_INVALID_RESPONSE', 'No valid memory data found for this model and hardware combination.')
     }
     rawData = parsed as Record<string, unknown>
   } catch {
-    return makeError(requestId, 'KV_CACHE_INVALID_RESPONSE', 'KV cache calculator service returned non-JSON response')
-  }
-
-  if (typeof rawData.error === 'string') {
-    return makeError(requestId, 'KV_CACHE_INVALID_RESPONSE', rawData.error as string)
-  }
-
-  if (typeof rawData.total_kv_size_bytes !== 'number') {
-    return makeError(
-      requestId,
-      'KV_CACHE_INVALID_RESPONSE',
-      'KV cache response missing required field: total_kv_size_bytes'
-    )
+    return makeError(requestId, 'AIC_INVALID_RESPONSE', 'AIConfigurator API returned non-JSON response')
   }
 
   const breakdown = (rawData.memory_breakdown ?? {}) as Record<string, unknown>
@@ -148,7 +136,7 @@ export async function callKvCacheCalc(
     requestId,
     status: 'completed',
     kvCache: {
-      totalBytes: rawData.total_kv_size_bytes as number,
+      totalBytes: asNumber(rawData.total_kv_size_bytes, 0),
       perTokenBytes: asNumber(rawData.kv_size_per_token_bytes, 0),
       totalTokens: asNumber(rawData.total_kv_size_tokens, 0),
     },

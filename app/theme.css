@@ -1,5 +1,5 @@
 /* ============================================================
-   gpu-calc · theme.css
+   ConfigIQ · theme.css
    Typography + color system for legibility on white console.
    Import once in app/layout.tsx:  import "./theme.css";
    These intentionally override PatternFly v5 globals that are
@@ -13,7 +13,7 @@
   --gc-text-3:      #54585c;  /* lightest allowed — short captions only      */
   --gc-link:        #0066cc;  /* links, buttons, all interactive             */
   --gc-link-hover:  #004080;
-  --gc-brand-red:   #ee0000;  /* LOGO ONLY — never text, never buttons       */
+  --gc-brand-red:   #ee0000;  /* Red Hat brand — used when RH user signs in   */
 
   /* Status */
   --gc-success: #3e8635;

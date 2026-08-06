@@ -1,3 +1,6 @@
+// GET /api/models
+// Model catalog endpoint with search and filtering
+
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchSupportedModels } from '@/lib/api/models'
 

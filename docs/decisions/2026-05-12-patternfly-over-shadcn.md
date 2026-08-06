@@ -9,7 +9,7 @@ Use PatternFly v5 as the only UI and styling system. Do not use Tailwind CSS or 
 
 ## Reasons
 
-- gpu-calc follows Red Hat brand standards
+- ConfigIQ follows PatternFly design standards
 - PatternFly is Red Hat's own design system — colors, fonts, and spacing match out of the box
 - Built for data-dense, engineer-facing interfaces (exactly this use case)
 - Includes Victory Charts — no separate chart library needed

@@ -1,6 +1,6 @@
 # Project overview
 
-gpu-calc is a web application for LLM inference sizing, GPU comparison, and
+ConfigIQ is a web application for LLM inference sizing, GPU comparison, and
 cost modeling. It was originally a static site hosted on GitHub Pages and is
 being rebuilt as a proper Next.js application.
 

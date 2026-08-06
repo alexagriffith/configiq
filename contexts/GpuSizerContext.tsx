@@ -9,6 +9,10 @@ interface GpuSizerParams {
   isl: number;
   osl: number;
   ttft: number;
+  tpot?: number;
+  backend?: string;
+  target_concurrency?: number;
+  target_request_rate?: number;
 }
 
 interface GpuSizerState {
@@ -75,13 +79,20 @@ export function GpuSizerProvider({ children }: { children: React.ReactNode }) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       model_path: p.model_path,
       system: p.system,
       isl: p.isl,
       osl: p.osl,
       ttft: p.ttft,
+      tpot: p.tpot ?? 30,
+      target_concurrency: p.target_concurrency ?? 32,
     };
+    if (p.backend) requestBody.backend = p.backend;
+    if (p.target_request_rate != null) {
+      delete requestBody.target_concurrency;
+      requestBody.target_request_rate = p.target_request_rate;
+    }
 
     setParams(p);
     setIsLoading(true);
@@ -95,7 +106,7 @@ export function GpuSizerProvider({ children }: { children: React.ReactNode }) {
 
     const t0 = performance.now();
 
-    fetch('/api/v1/gpu-sizer', {
+    fetch('/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),

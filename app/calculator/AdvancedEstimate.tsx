@@ -16,6 +16,7 @@ import styles from './AdvancedEstimate.module.css';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { ComboBox } from '@/components/ModelComboBox/ModelComboBox';
 import type { ComboBoxItem } from '@/components/ModelComboBox/ModelComboBox';
+import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
@@ -72,12 +73,11 @@ function useCountUp(target: number, duration = 750, decimals = 0) {
 
 function friendlyErrorTitle(code: string | null): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT': return 'Request timed out';
-    case 'GPU_SIZER_NO_CONFIGURATION': return 'No valid configuration found';
-    case 'GPU_SIZER_UNAVAILABLE': return 'Sizing service unavailable';
-    case 'GPU_SIZER_AUTH_FAILED': return 'Service authentication error';
-    case 'GPU_SIZER_NOT_CONFIGURED': return 'Service not configured';
-    case 'GPU_SIZER_INVALID_RESPONSE': return 'Unexpected response';
+    case 'AIC_TIMEOUT': return 'Request timed out';
+    case 'AIC_NO_CONFIGURATION': return 'No valid configuration found';
+    case 'AIC_UNAVAILABLE': return 'Sizing service unavailable';
+    case 'AIC_NOT_CONFIGURED': return 'Service not configured';
+    case 'AIC_INVALID_RESPONSE': return 'Unexpected response';
     case 'INVALID_REQUEST': return 'Invalid input';
     case 'NETWORK_ERROR': return 'Connection error';
     default: return 'Something went wrong';
@@ -86,17 +86,15 @@ function friendlyErrorTitle(code: string | null): string {
 
 function friendlyErrorMessage(code: string | null, raw: string): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT':
+    case 'AIC_TIMEOUT':
       return 'The sizing engine took too long to respond. This can happen with very large models or complex configurations.';
-    case 'GPU_SIZER_NO_CONFIGURATION':
-      return 'This model and GPU combination doesn’t have a valid sizing configuration. The engine couldn’t find a workable setup.';
-    case 'GPU_SIZER_UNAVAILABLE':
-      return 'The GPU sizing service is temporarily unreachable. This is usually a transient issue.';
-    case 'GPU_SIZER_AUTH_FAILED':
-      return 'The sizing service rejected our credentials. Please contact your administrator.';
-    case 'GPU_SIZER_NOT_CONFIGURED':
-      return 'The sizing service hasn’t been set up yet. Please contact your administrator.';
-    case 'GPU_SIZER_INVALID_RESPONSE':
+    case 'AIC_NO_CONFIGURATION':
+      return 'No valid GPU configuration found for this model and hardware combination.';
+    case 'AIC_UNAVAILABLE':
+      return 'The AIConfigurator service is temporarily unreachable. This is usually a transient issue.';
+    case 'AIC_NOT_CONFIGURED':
+      return 'The AIConfigurator service URL is not configured.';
+    case 'AIC_INVALID_RESPONSE':
       return 'The sizing engine returned an unexpected response format.';
     case 'INVALID_REQUEST':
       return 'Some input values are missing or invalid. Please check your model name and parameters.';
@@ -109,11 +107,11 @@ function friendlyErrorMessage(code: string | null, raw: string): string {
 
 function friendlyErrorHint(code: string | null): string {
   switch (code) {
-    case 'GPU_SIZER_TIMEOUT':
+    case 'AIC_TIMEOUT':
       return 'Try again, or try a smaller model or simpler configuration.';
-    case 'GPU_SIZER_NO_CONFIGURATION':
+    case 'AIC_NO_CONFIGURATION':
       return 'Try a different GPU system, or reduce the input token length (ISL).';
-    case 'GPU_SIZER_UNAVAILABLE':
+    case 'AIC_UNAVAILABLE':
       return 'Wait a moment and try again.';
     case 'NETWORK_ERROR':
       return 'Check your connection and try again.';
@@ -130,12 +128,6 @@ export default function AdvancedEstimate() {
   // AIC catalog
   const { gpuOptions, modelOptions, isLoading: catalogLoading } = useAicCatalog();
 
-  const modelItems: ComboBoxItem[] = React.useMemo(() =>
-    modelOptions.map(m => {
-      const slash = m.indexOf('/');
-      return { value: m, label: m, group: slash > 0 ? m.slice(0, slash) : '' };
-    }), [modelOptions]);
-
   const gpuItems: ComboBoxItem[] = React.useMemo(() =>
     gpuOptions.map(g => ({
       value: g.systemId,
@@ -143,9 +135,13 @@ export default function AdvancedEstimate() {
       group: g.vendor,
     })), [gpuOptions]);
 
+  const MODEL_OPTIONS = modelOptions;
+
   // Input state
-  const [model, setModel] = React.useState('meta-llama/Llama-3.1-70B-Instruct');
-  const [gpuSystem, setGpuSystem] = React.useState('');
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
+  const [gpuSystem, setGpuSystem] = React.useState(
+    GPU_OPTIONS_ADV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_ADV[0]?.systemId ?? ''
+  );
   const [isl, setIsl] = React.useState(2048);
   const [osl, setOsl] = React.useState(128);
   const [ttft, setTtft] = React.useState(1000);
@@ -189,26 +185,29 @@ export default function AdvancedEstimate() {
 
   // Model status check + fetch HF config
   React.useEffect(() => {
+    if (catalogLoading) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
-      const inCatalog = modelOptions.includes(model);
+      const inCatalog = MODEL_OPTIONS.includes(model);
       setModelStatus(inCatalog ? 'catalog' : 'fetching');
-      fetchModelConfig(model, hfToken).then(r => {
-        if (r.success && r.config) {
-          setModelStatus(inCatalog ? 'catalog' : 'fetched');
-        } else {
-          if (!inCatalog) setModelStatus('error');
-        }
-      });
+      if (!inCatalog) {
+        fetchModelConfig(model, hfToken).then(r => {
+          if (r.success && r.config) {
+            setModelStatus('fetched');
+          } else {
+            setModelStatus('error');
+          }
+        });
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken, modelOptions]);
+  }, [model, hfToken, MODEL_OPTIONS, catalogLoading]);
 
   // Fetch live pricing
   React.useEffect(() => {
     const fetchPricing = async () => {
       try {
-        const res = await fetch('/api/v1/gpus?live_pricing=true');
+        const res = await fetch('/api/gpus?live_pricing=true');
         if (!res.ok) return;
         const data = await res.json();
         if (!data?.data?.gpus) return;
@@ -235,9 +234,12 @@ export default function AdvancedEstimate() {
 
   // Get current GPU from catalog
   const currentGpu = gpuOptions.find(g => g.systemId === gpuSystem);
+  // Get GPU + model spec from catalog
+  const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
+  const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
 
   const handleCalculate = () => {
-    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft });
+    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32 });
   };
 
   // Local memory analysis using the same engine as Quick Estimate
@@ -273,13 +275,38 @@ export default function AdvancedEstimate() {
               Model — Hugging Face ID
               <StatusChip status={modelStatus} />
             </label>
-            <ComboBox
-              value={model}
-              onChange={setModel}
-              items={modelItems}
-              placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
-              allowCustom
-            />
+            <div className={styles.modelInputWrapper}>
+              <input
+                type="text"
+                className={styles.modelInput}
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                list="model-options"
+                placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <datalist id="model-options">
+                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
+              </datalist>
+              <div className={styles.autoChipWrapper}>
+                {modelStatus === 'catalog' && (
+                  <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
+                )}
+                {modelStatus === 'fetching' && (
+                  <Label color="blue" isCompact>Fetching...</Label>
+                )}
+                {modelStatus === 'fetched' && (
+                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                )}
+                {modelStatus === 'error' && (
+                  <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>
+                )}
+              </div>
+            </div>
+            <div className={styles.helperText}>
+              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
+            </div>
           </div>
 
           <div>
@@ -307,7 +334,7 @@ export default function AdvancedEstimate() {
             onClick={handleCalculate}
             disabled={isLoading || !model.includes('/')}
           >
-            {isLoading ? 'Calculating...' : 'Calculate GPU Requirement'}
+            {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
         </div>
       </div>
@@ -661,7 +688,7 @@ export default function AdvancedEstimate() {
           {debugOpen && (
             <div className={styles.debugBody}>
               <div className={styles.debugPane}>
-                <div className={styles.debugPaneHeader}>Request → POST /api/v1/gpu-sizer</div>
+                <div className={styles.debugPaneHeader}>Request → POST /api/recommend</div>
                 <pre className={styles.debugPre}>
                   {JSON.stringify(debugRequest, null, 2)}
                 </pre>

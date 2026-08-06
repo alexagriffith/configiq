@@ -17,10 +17,18 @@ import {
   CpuIcon,
   CalculatorIcon,
   RouteIcon,
+  BoltIcon,
 } from "@patternfly/react-icons";
 import Link from "next/link";
 
 const tools = [
+  {
+    title: "Quick estimate",
+    description:
+      "Fast GPU sizing from a model name and workload profile. Results in seconds.",
+    href: "/quick-estimate",
+    icon: <BoltIcon />,
+  },
   {
     title: "KV Cache Calculator",
     description:
@@ -68,7 +76,7 @@ export default function HomePage() {
           </div>
           <TextContent>
             <Title headingLevel="h1" size="2xl">
-              GPU Calc
+              ConfigIQ
             </Title>
             <Text component="p">
               LLM inference sizing, GPU comparison, and cost modeling for

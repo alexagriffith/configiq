@@ -1,13 +1,13 @@
-# CLAUDE.md — gpu-calc
+# CLAUDE.md — ConfigIQ
 
 This file gives Claude Code context about this project.
 Read this before making any changes.
 
 ## What this project is
 
-gpu-calc is a web application for LLM inference sizing, GPU comparison, and
-cost modeling. It is a full-stack rebuild of a static site originally hosted
-at nb-qbits.github.io/gpu-calc.
+ConfigIQ is a web application for LLM inference sizing, GPU comparison, and
+cost modeling. It is deployed at configiq.dev and uses the AIConfigurator
+REST API at aiconfigurator.dev for GPU recommendations and memory estimation.
 
 ## Tech stack
 

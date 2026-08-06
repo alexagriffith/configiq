@@ -1,5 +1,5 @@
-// GET /api/v1/gpus
-// GPU catalog endpoint — tries AIConfigurator first, falls back to local catalog + Cloudflare pricing
+// GET /api/gpus
+// GPU catalog endpoint with filtering + live pricing from Cloudflare Worker
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
