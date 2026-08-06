@@ -175,9 +175,9 @@ code, pre, .pf-v5-u-font-family-mono {
 /* Button overrides: primary buttons use brand blue */
 .pf-v5-c-button.pf-m-primary {
   --pf-v5-c-button--m-primary--BackgroundColor: #0066cc;
-  --pf-v5-c-button--m-primary--hover--BackgroundColor: #be0000;
-  --pf-v5-c-button--m-primary--active--BackgroundColor: #a30000;
-  --pf-v5-c-button--m-primary--focus--BackgroundColor: #be0000;
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: #004d99;
+  --pf-v5-c-button--m-primary--active--BackgroundColor: #003d7a;
+  --pf-v5-c-button--m-primary--focus--BackgroundColor: #004d99;
 }
 
 /* ── Top nav ──────────────────────────────────────────────────────────────── */
