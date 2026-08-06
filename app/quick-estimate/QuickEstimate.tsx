@@ -949,6 +949,8 @@ export default function QuickEstimate() {
                 placeholder="Type model name or select from dropdown..."
                 aria-label="Model Hugging Face ID"
                 className={styles.modelInput}
+                spellCheck={false}
+                autoComplete="off"
               />
               <datalist id="qe-models">
                 {MODEL_OPTIONS.map((m) => <option key={m} value={m} />)}

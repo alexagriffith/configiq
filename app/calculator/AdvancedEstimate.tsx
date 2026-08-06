@@ -264,6 +264,8 @@ export default function AdvancedEstimate() {
                 onChange={e => setModel(e.target.value)}
                 list="model-options"
                 placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+                spellCheck={false}
+                autoComplete="off"
               />
               <datalist id="model-options">
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}

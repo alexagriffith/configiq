@@ -135,6 +135,8 @@ export default function KvCacheCalc() {
                 onChange={e => setModel(e.target.value)}
                 placeholder="Type model name or select from dropdown..."
                 className={styles.modelInput}
+                spellCheck={false}
+                autoComplete="off"
               />
               <datalist id="kv-models">
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
