@@ -126,7 +126,7 @@ function friendlyErrorHint(code: string | null): string {
 
 export default function AdvancedEstimate() {
   // Input state
-  const [model, setModel] = React.useState('meta-llama/Llama-3.1-70B-Instruct');
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpuSystem, setGpuSystem] = React.useState(
     GPU_OPTIONS_ADV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_ADV[0]?.systemId ?? ''
   );

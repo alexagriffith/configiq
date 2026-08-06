@@ -12,9 +12,64 @@ const ERROR_STATUS_MAP: Record<string, number> = {
   INTERNAL_ERROR: 500,
 }
 
+const DEFAULT_TIMEOUT_SECONDS = 90
+
+async function proxyToAic(body: Record<string, unknown>, include: string): Promise<NextResponse> {
+  const baseUrl = process.env.AICONFIGURATOR_API_URL
+  const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
+
+  if (!baseUrl) {
+    return NextResponse.json(
+      { status: 'failed', error: { code: 'AIC_NOT_CONFIGURED', message: 'AIConfigurator API URL is not configured' } },
+      { status: 503 },
+    )
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/recommend?include=${encodeURIComponent(include)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutSeconds * 1000),
+    })
+
+    const text = await res.text()
+    let data: unknown
+    try {
+      data = JSON.parse(text)
+    } catch {
+      return NextResponse.json(
+        { status: 'failed', error: { code: 'AIC_INVALID_RESPONSE', message: 'AIConfigurator returned non-JSON response' } },
+        { status: 502 },
+      )
+    }
+    return NextResponse.json(data, {
+      status: res.ok ? 200 : res.status,
+      headers: { 'Cache-Control': 'no-store' },
+    })
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      return NextResponse.json(
+        { status: 'failed', error: { code: 'AIC_TIMEOUT', message: 'AIConfigurator API timed out' } },
+        { status: 504 },
+      )
+    }
+    return NextResponse.json(
+      { status: 'failed', error: { code: 'AIC_UNAVAILABLE', message: 'AIConfigurator API is unreachable' } },
+      { status: 502 },
+    )
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    const include = req.nextUrl.searchParams.get('include')
+
+    if (include) {
+      return proxyToAic(body, include)
+    }
+
     const validated = GpuSizerRequestSchema.parse(body)
     const result = await callGpuSizer(validated)
 
