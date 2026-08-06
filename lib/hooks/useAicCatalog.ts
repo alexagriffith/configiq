@@ -42,7 +42,7 @@ export function useAicCatalog(): AicCatalog {
 
   useEffect(() => {
     let cancelled = false
-    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://aiconfigurator.dev'
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://www.aiconfigurator.dev'
 
     async function fetchCatalog() {
       try {

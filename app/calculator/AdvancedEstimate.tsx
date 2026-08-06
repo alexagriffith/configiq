@@ -13,13 +13,12 @@ import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 
 import styles from './AdvancedEstimate.module.css';
-import { MODEL_CATALOG } from '@/lib/gpu-math/models';
 import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
 
 // ─── FlipTile (reused from Quick Estimate pattern) ───────────────────────────
 
@@ -125,6 +124,9 @@ function friendlyErrorHint(code: string | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdvancedEstimate() {
+  const { modelOptions: aicModels } = useAicCatalog();
+  const MODEL_OPTIONS = aicModels;
+
   // Input state
   const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpuSystem, setGpuSystem] = React.useState(
@@ -167,7 +169,7 @@ export default function AdvancedEstimate() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
-      const inCatalog = MODEL_CATALOG.some(m => m.hfId === model);
+      const inCatalog = MODEL_OPTIONS.includes(model);
       setModelStatus(inCatalog ? 'catalog' : 'fetching');
       fetchModelConfig(model, hfToken).then(r => {
         if (r.success && r.config) {
@@ -178,7 +180,7 @@ export default function AdvancedEstimate() {
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken]);
+  }, [model, hfToken, MODEL_OPTIONS]);
 
   // Fetch live pricing
   React.useEffect(() => {
@@ -212,7 +214,6 @@ export default function AdvancedEstimate() {
   // Get GPU + model spec from catalog
   const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
   const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
-  const catalogModel = MODEL_CATALOG.find(m => m.hfId === model);
 
   const handleCalculate = () => {
     startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32 });

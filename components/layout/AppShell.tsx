@@ -145,6 +145,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavItemWithIcon
               icon={BoltIcon}
+              label="Quick estimate"
+              href="/quick-estimate"
+              isActive={pathname === "/quick-estimate"}
+            />
+            <NavItemWithIcon
+              icon={BoltIcon}
               label="KV cache calculator"
               href="/kv-cache"
               isActive={pathname === "/kv-cache"}

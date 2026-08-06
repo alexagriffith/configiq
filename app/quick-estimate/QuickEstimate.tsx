@@ -28,7 +28,6 @@ import styles from './QuickEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
 import { ProductTour, type TourStep } from '@/components/ProductTour';
 import { SaveEstimateModal } from './SaveEstimateModal';
-import { MODEL_CATALOG } from '@/lib/gpu-math/models';
 import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
@@ -37,7 +36,6 @@ import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
-const STATIC_MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
 const STATIC_GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
 
 function mapGpuToCatalogId(uiGpuName: string): string {
@@ -92,10 +90,7 @@ export default function QuickEstimate() {
     () => aicGpus.length > 0 ? aicGpus.map(g => g.label) : STATIC_GPU_OPTIONS,
     [aicGpus],
   );
-  const MODEL_OPTIONS = React.useMemo(
-    () => aicModels.length > 0 ? aicModels : STATIC_MODEL_OPTIONS,
-    [aicModels],
-  );
+  const MODEL_OPTIONS = aicModels;
 
   const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpu, setGpu] = React.useState('');
@@ -959,14 +954,14 @@ export default function QuickEstimate() {
                 {MODEL_OPTIONS.map((m) => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
-                {isFetchingConfig ? (
-                  <Label color="blue">🔄 Fetching from HuggingFace...</Label>
-                ) : MODEL_CATALOG.find(m => m.hfId === model || m.id === model || m.name === model) ? (
-                  <Label color="green" icon={<CheckCircleIcon />}>✓ In catalog</Label>
+                {MODEL_OPTIONS.includes(model) ? (
+                  <Label color="green" icon={<CheckCircleIcon />}>In catalog</Label>
+                ) : isFetchingConfig || catalogLoading ? (
+                  <Label color="blue">🔄 Checking model...</Label>
                 ) : hfConfig ? (
-                  <Label color="cyan" icon={<CheckCircleIcon />}>✓ Fetched from HuggingFace</Label>
+                  <Label color="cyan" icon={<CheckCircleIcon />}>From HuggingFace</Label>
                 ) : testError ? (
-                  <Label color="red" icon={<ExclamationTriangleIcon />}>❌ Not found</Label>
+                  <Label color="red" icon={<ExclamationTriangleIcon />}>Not found</Label>
                 ) : (
                   <Label color="grey">Type to search...</Label>
                 )}

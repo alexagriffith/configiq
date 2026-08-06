@@ -2,14 +2,13 @@
 
 import * as React from 'react'
 import { Alert, Spinner } from '@patternfly/react-core'
-import { MODEL_CATALOG } from '@/lib/gpu-math/models'
 import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/app/quick-estimate/quickEstimateHelpers'
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
 
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId)
 
 const BREAKDOWN_COLORS: Record<string, string> = {
   kv: '#0066cc',
@@ -20,7 +19,10 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
-  const [model, setModel] = React.useState(MODEL_CATALOG[0]?.hfId ?? '')
+  const { modelOptions: aicModels } = useAicCatalog()
+  const MODEL_OPTIONS = aicModels
+
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B')
   const [system, setSystem] = React.useState(GPU_OPTIONS_KV[0]?.systemId ?? '')
   const [backend, setBackend] = React.useState('vllm')
   const [backendVersion, setBackendVersion] = React.useState('')
@@ -43,7 +45,7 @@ export default function KvCacheCalc() {
   const [debugStatus, setDebugStatus] = React.useState<number | null>(null)
   const [debugDuration, setDebugDuration] = React.useState<number | null>(null)
 
-  const catalogMatch = MODEL_CATALOG.find(m => m.hfId === model)
+  const catalogMatch = MODEL_OPTIONS.includes(model)
 
   async function handleCalculate() {
     setLoading(true)

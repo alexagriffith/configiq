@@ -17,10 +17,18 @@ import {
   CpuIcon,
   CalculatorIcon,
   RouteIcon,
+  BoltIcon,
 } from "@patternfly/react-icons";
 import Link from "next/link";
 
 const tools = [
+  {
+    title: "Quick Estimate",
+    description:
+      "Fast GPU sizing from a model name and workload profile. Results in seconds.",
+    href: "/quick-estimate",
+    icon: <BoltIcon />,
+  },
   {
     title: "KV Cache Calculator",
     description:
