@@ -48,7 +48,7 @@ interface AicConfig {
     activations_bytes: number
     runtime_overhead_bytes: number
     comm_overhead_bytes: number
-    kv_cache_bytes: number
+    kv_cache_bytes?: number
   }
 }
 
@@ -122,9 +122,14 @@ export async function fetchRecommendAsInferenceResult(
   const replicas = best.replicas_needed ?? 1
   const totalVramGb = gpuVramGb(input.system)
   const gmu = sc?.gpu_memory_utilization ?? 0.9
-  const weightGb = mb ? mb.weights_bytes / GB : (best.memory ?? 0) * 0.5
-  const kvCacheGb = mb ? mb.kv_cache_bytes / GB : 0
+  const hasBreakdown = !!mb
+  const weightGb = hasBreakdown ? mb.weights_bytes / GB : (best.memory ?? 0) * 0.5
+  const kvCacheGb = hasBreakdown && typeof mb.kv_cache_bytes === 'number' ? mb.kv_cache_bytes / GB : 0
   const usablePerGpu = totalVramGb * gmu
+  const warnings: string[] = []
+  if (!hasBreakdown && best.memory) {
+    warnings.push('Weight memory is estimated as 50% of total memory (no breakdown available).')
+  }
 
   return {
     memory_analysis: {
@@ -165,6 +170,6 @@ export async function fetchRecommendAsInferenceResult(
       dcgm_metrics: ['DCGM_FI_PROF_GR_ENGINE_ACTIVE', 'DCGM_FI_DEV_FB_USED'],
       vllm_metrics: ['vllm:num_requests_running', 'vllm:gpu_cache_usage_perc'],
     },
-    warnings: [],
+    warnings,
   }
 }

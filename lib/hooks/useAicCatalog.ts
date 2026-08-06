@@ -24,8 +24,8 @@ const GB = 1_073_741_824
 function mapSystem(s: Record<string, unknown>): GpuOption {
   const memBytes = typeof s.memory_bytes === 'number' ? s.memory_bytes : 0
   return {
-    systemId: (s.id ?? '') as string,
-    label: (s.name ?? s.id ?? '') as string,
+    systemId: typeof s.id === 'string' ? s.id : '',
+    label: typeof s.name === 'string' ? s.name : (typeof s.id === 'string' ? s.id : ''),
     vramGb: memBytes > 0 ? Math.round(memBytes / GB) : null,
     bandwidthTbps: null,
     tflopsBf16: null,
@@ -42,11 +42,10 @@ export function useAicCatalog(): AicCatalog {
 
   useEffect(() => {
     let cancelled = false
-    const baseUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || ''
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://aiconfigurator.dev'
 
     async function fetchCatalog() {
       try {
-        const aicUrl = baseUrl || '/api'
         const [systemsRes, modelsRes] = await Promise.all([
           fetch(`${aicUrl}/systems?include=specs`),
           fetch(`${aicUrl}/models`),

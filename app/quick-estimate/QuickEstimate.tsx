@@ -88,10 +88,14 @@ export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
   const { gpuOptions: aicGpus, modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
 
-  const GPU_OPTIONS = aicGpus.length > 0
-    ? aicGpus.map(g => g.label)
-    : STATIC_GPU_OPTIONS;
-  const MODEL_OPTIONS = aicModels.length > 0 ? aicModels : STATIC_MODEL_OPTIONS;
+  const GPU_OPTIONS = React.useMemo(
+    () => aicGpus.length > 0 ? aicGpus.map(g => g.label) : STATIC_GPU_OPTIONS,
+    [aicGpus],
+  );
+  const MODEL_OPTIONS = React.useMemo(
+    () => aicModels.length > 0 ? aicModels : STATIC_MODEL_OPTIONS,
+    [aicModels],
+  );
 
   const [model, setModel] = React.useState('meta-llama/Meta-Llama-3.1-70B');
   const [gpu, setGpu] = React.useState('');
@@ -250,7 +254,7 @@ export default function QuickEstimate() {
     }, 500);
 
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [model, gpu, testConcurrentUsers, testISL, testOSL]);
+  }, [model, gpu, testConcurrentUsers, testISL, testOSL, aicGpus]);
 
   // Fetch live pricing from Cloudflare Worker
   React.useEffect(() => {
