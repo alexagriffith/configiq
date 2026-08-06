@@ -76,7 +76,7 @@ export default function HomePage() {
           </div>
           <TextContent>
             <Title headingLevel="h1" size="2xl">
-              GPU Calc
+              ConfigIQ
             </Title>
             <Text component="p">
               LLM inference sizing, GPU comparison, and cost modeling for
