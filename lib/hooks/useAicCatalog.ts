@@ -34,37 +34,65 @@ function mapSystem(s: Record<string, unknown>): GpuOption {
   }
 }
 
+// Module-level cache — shared across all components, survives re-renders
+let cachedGpus: GpuOption[] | null = null
+let cachedModels: string[] | null = null
+let fetchPromise: Promise<void> | null = null
+
 export function useAicCatalog(): AicCatalog {
-  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>([])
-  const [modelOptions, setModelOptions] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>(cachedGpus ?? [])
+  const [modelOptions, setModelOptions] = useState<string[]>(cachedModels ?? [])
+  const [isLoading, setIsLoading] = useState(cachedGpus === null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (cachedGpus !== null && cachedModels !== null) {
+      setGpuOptions(cachedGpus)
+      setModelOptions(cachedModels)
+      setIsLoading(false)
+      return
+    }
+
     let cancelled = false
-    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://aiconfigurator.dev'
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://www.aiconfigurator.dev'
 
     async function fetchCatalog() {
+      if (!fetchPromise) {
+        fetchPromise = (async () => {
+          const [systemsRes, modelsRes] = await Promise.all([
+            fetch(`${aicUrl}/systems?include=specs`),
+            fetch(`${aicUrl}/models`),
+          ])
+
+          if (!systemsRes.ok) throw new Error(`Systems fetch failed (${systemsRes.status})`)
+          if (!modelsRes.ok) throw new Error(`Models fetch failed (${modelsRes.status})`)
+
+          const systemsData = await systemsRes.json()
+          const modelsData = await modelsRes.json()
+
+          const systems = (systemsData.systems ?? []) as Record<string, unknown>[]
+          const gpus = systems.map(mapSystem)
+
+          const models = (modelsData.models ?? []) as unknown[]
+          const modelList = models.filter((m): m is string => typeof m === 'string')
+
+          if (gpus.length === 0 || modelList.length === 0) {
+            throw new Error('AIC returned empty catalog')
+          }
+
+          cachedGpus = gpus
+          cachedModels = modelList
+        })()
+      }
+
       try {
-        const [systemsRes, modelsRes] = await Promise.all([
-          fetch(`${aicUrl}/systems?include=specs`),
-          fetch(`${aicUrl}/models`),
-        ])
-
-        if (!systemsRes.ok) throw new Error(`Systems fetch failed (${systemsRes.status})`)
-        if (!modelsRes.ok) throw new Error(`Models fetch failed (${modelsRes.status})`)
-
-        const systemsData = await systemsRes.json()
-        const modelsData = await modelsRes.json()
-
-        if (cancelled) return
-
-        const systems = (systemsData.systems ?? []) as Record<string, unknown>[]
-        setGpuOptions(systems.map(mapSystem))
-
-        const models = (modelsData.models ?? []) as unknown[]
-        setModelOptions(models.filter((m): m is string => typeof m === 'string'))
+        await fetchPromise
+        if (!cancelled) {
+          setGpuOptions(cachedGpus!)
+          setModelOptions(cachedModels!)
+        }
       } catch (err) {
+        fetchPromise = null
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to fetch catalog')
         }

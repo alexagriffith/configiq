@@ -61,9 +61,12 @@ const redHatMono = Red_Hat_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GPU Calc — LLM Inference Sizing & Cost Calculator",
+  title: "ConfigIQ — LLM inference sizing and cost calculator",
   description:
     "Estimate GPU requirements, compare costs, and model LLM inference economics across cloud and on-premise deployments.",
+  icons: {
+    icon: "/config-iq-logo.svg",
+  },
 };
 
 export default function RootLayout({

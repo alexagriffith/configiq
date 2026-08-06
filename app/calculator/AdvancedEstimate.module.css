@@ -163,7 +163,7 @@
 .calcBtn {
   height: 42px;
   padding: 0 28px;
-  background: var(--red);
+  background: var(--blue);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -174,7 +174,7 @@
   transition: background 150ms;
   white-space: nowrap;
 }
-.calcBtn:hover { background: #cc0000; }
+.calcBtn:hover { background: #004d99; }
 .calcBtn:disabled {
   background: #ccc;
   cursor: not-allowed;

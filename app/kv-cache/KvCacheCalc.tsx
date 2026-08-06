@@ -1,15 +1,15 @@
 'use client'
 
 import * as React from 'react'
-import { Alert, Spinner } from '@patternfly/react-core'
-import { MODEL_CATALOG } from '@/lib/gpu-math/models'
+import { Alert, Label, Spinner } from '@patternfly/react-core'
+import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/app/quick-estimate/quickEstimateHelpers'
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
 
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId)
 
 const BREAKDOWN_COLORS: Record<string, string> = {
   kv: '#0066cc',
@@ -20,10 +20,15 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
-  const [model, setModel] = React.useState(MODEL_CATALOG[0]?.hfId ?? '')
-  const [system, setSystem] = React.useState(GPU_OPTIONS_KV[0]?.systemId ?? '')
+  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog()
+  const MODEL_OPTIONS = aicModels
+
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B')
+  const [system, setSystem] = React.useState(
+    GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
+  )
   const [backend, setBackend] = React.useState('vllm')
-  const [backendVersion, setBackendVersion] = React.useState('')
+  const [backendVersion, setBackendVersion] = React.useState('0.24.0')
   const [maxNumTokens, setMaxNumTokens] = React.useState(8192)
   const [maxBatchSize, setMaxBatchSize] = React.useState(128)
   const [tpSize, setTpSize] = React.useState(1)
@@ -43,7 +48,7 @@ export default function KvCacheCalc() {
   const [debugStatus, setDebugStatus] = React.useState<number | null>(null)
   const [debugDuration, setDebugDuration] = React.useState<number | null>(null)
 
-  const catalogMatch = MODEL_CATALOG.find(m => m.hfId === model)
+  const catalogMatch = MODEL_OPTIONS.includes(model)
 
   async function handleCalculate() {
     setLoading(true)
@@ -122,7 +127,7 @@ export default function KvCacheCalc() {
       <div className={styles.inputCard}>
         <div className={styles.inputRow}>
           <div className={styles.field}>
-            <label htmlFor="kv-model" className={styles.fieldLabel}>Model</label>
+            <label htmlFor="kv-model" className={styles.fieldLabel}>Model — Hugging Face ID</label>
             <div className={styles.modelInputWrapper}>
               <input
                 type="text"
@@ -132,13 +137,21 @@ export default function KvCacheCalc() {
                 onChange={e => setModel(e.target.value)}
                 placeholder="Type model name or select from dropdown..."
                 className={styles.modelInput}
+                spellCheck={false}
+                autoComplete="off"
               />
               <datalist id="kv-models">
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
               </datalist>
               {model && (
-                <span className={`${styles.modelChip} ${catalogMatch ? styles.modelChipCatalog : styles.modelChipCustom}`}>
-                  {catalogMatch ? 'In catalog' : 'Custom model'}
+                <span className={styles.modelChip}>
+                  {catalogMatch ? (
+                    <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
+                  ) : catalogLoading ? (
+                    <Label color="blue" isCompact>Loading...</Label>
+                  ) : (
+                    <Label color="grey" isCompact>Custom model</Label>
+                  )}
                 </span>
               )}
             </div>

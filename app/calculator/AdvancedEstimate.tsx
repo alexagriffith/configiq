@@ -13,13 +13,12 @@ import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 
 import styles from './AdvancedEstimate.module.css';
-import { MODEL_CATALOG } from '@/lib/gpu-math/models';
 import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
 
 // ─── FlipTile (reused from Quick Estimate pattern) ───────────────────────────
 
@@ -125,6 +124,9 @@ function friendlyErrorHint(code: string | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdvancedEstimate() {
+  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
+  const MODEL_OPTIONS = aicModels;
+
   // Input state
   const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpuSystem, setGpuSystem] = React.useState(
@@ -165,20 +167,23 @@ export default function AdvancedEstimate() {
 
   // Model status check + fetch HF config
   React.useEffect(() => {
+    if (catalogLoading) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
-      const inCatalog = MODEL_CATALOG.some(m => m.hfId === model);
+      const inCatalog = MODEL_OPTIONS.includes(model);
       setModelStatus(inCatalog ? 'catalog' : 'fetching');
-      fetchModelConfig(model, hfToken).then(r => {
-        if (r.success && r.config) {
-          setModelStatus(inCatalog ? 'catalog' : 'fetched');
-        } else {
-          if (!inCatalog) setModelStatus('error');
-        }
-      });
+      if (!inCatalog) {
+        fetchModelConfig(model, hfToken).then(r => {
+          if (r.success && r.config) {
+            setModelStatus('fetched');
+          } else {
+            setModelStatus('error');
+          }
+        });
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken]);
+  }, [model, hfToken, MODEL_OPTIONS, catalogLoading]);
 
   // Fetch live pricing
   React.useEffect(() => {
@@ -212,7 +217,6 @@ export default function AdvancedEstimate() {
   // Get GPU + model spec from catalog
   const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
   const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
-  const catalogModel = MODEL_CATALOG.find(m => m.hfId === model);
 
   const handleCalculate = () => {
     startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32 });
@@ -260,6 +264,8 @@ export default function AdvancedEstimate() {
                 onChange={e => setModel(e.target.value)}
                 list="model-options"
                 placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+                spellCheck={false}
+                autoComplete="off"
               />
               <datalist id="model-options">
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
@@ -310,7 +316,7 @@ export default function AdvancedEstimate() {
             onClick={handleCalculate}
             disabled={isLoading || !model.includes('/')}
           >
-            {isLoading ? 'Calculating...' : 'Calculate GPU Requirement'}
+            {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
         </div>
       </div>
