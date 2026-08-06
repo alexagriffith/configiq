@@ -33,7 +33,16 @@ async function proxyToAic(body: Record<string, unknown>, include: string): Promi
       signal: AbortSignal.timeout(timeoutSeconds * 1000),
     })
 
-    const data = await res.json()
+    const text = await res.text()
+    let data: unknown
+    try {
+      data = JSON.parse(text)
+    } catch {
+      return NextResponse.json(
+        { status: 'failed', error: { code: 'AIC_INVALID_RESPONSE', message: 'AIConfigurator returned non-JSON response' } },
+        { status: 502 },
+      )
+    }
     return NextResponse.json(data, {
       status: res.ok ? 200 : res.status,
       headers: { 'Cache-Control': 'no-store' },

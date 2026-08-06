@@ -140,16 +140,20 @@ export async function fetchRecommendAsInferenceResult(
       kv_category: 'AIC',
       kv_category_label: 'AIConfigurator estimate',
     },
-    vllm_config: {
-      tensor_parallel_size: sc?.tensor_parallel_size ?? tp,
-      max_model_len: sc?.max_model_len ?? (input.isl + input.osl),
-      max_num_seqs: sc?.max_num_seqs ?? Math.min(best.concurrency ?? 128, 256),
-      gpu_memory_utilization: sc?.gpu_memory_utilization ?? gmu,
-      max_num_batched_tokens: (sc?.max_model_len ?? (input.isl + input.osl)) * (sc?.max_num_seqs ?? 128),
-      enable_chunked_prefill: sc?.enable_chunked_prefill ?? false,
-      enable_prefix_caching: sc?.enable_prefix_caching ?? false,
-      quantization: sc?.quantization ?? 'auto',
-    },
+    vllm_config: (() => {
+      const maxModelLen = sc?.max_model_len ?? (input.isl + input.osl)
+      const maxNumSeqs = sc?.max_num_seqs ?? Math.min(best.concurrency ?? 128, 256)
+      return {
+        tensor_parallel_size: sc?.tensor_parallel_size ?? tp,
+        max_model_len: maxModelLen,
+        max_num_seqs: maxNumSeqs,
+        gpu_memory_utilization: sc?.gpu_memory_utilization ?? gmu,
+        max_num_batched_tokens: Math.min(maxModelLen * maxNumSeqs, 32768),
+        enable_chunked_prefill: sc?.enable_chunked_prefill ?? false,
+        enable_prefix_caching: sc?.enable_prefix_caching ?? false,
+        quantization: sc?.quantization ?? 'auto',
+      }
+    })(),
     parallelism_strategy: {
       strategy: pp > 1 ? 'PP_ACROSS_NODES' : 'TP_ONLY',
       pp_size: pp,

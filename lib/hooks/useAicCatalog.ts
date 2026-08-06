@@ -48,7 +48,7 @@ export function useAicCatalog(): AicCatalog {
       try {
         const aicUrl = baseUrl || '/api'
         const [systemsRes, modelsRes] = await Promise.all([
-          fetch(`${aicUrl}/systems?detail=true`),
+          fetch(`${aicUrl}/systems?include=specs`),
           fetch(`${aicUrl}/models`),
         ])
 

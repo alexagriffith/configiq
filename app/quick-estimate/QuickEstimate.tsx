@@ -33,13 +33,23 @@ import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchRecommendAsInferenceResult } from '@/lib/api/recommend-adapter';
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
-// Generate model options from actual MODEL_CATALOG
-const MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
+const STATIC_MODEL_OPTIONS = MODEL_CATALOG.map(m => m.hfId);
+const STATIC_GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
 
-const GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
+function mapGpuToCatalogId(uiGpuName: string): string {
+  const match = GPU_OPTIONS_QE.find(g => g.label === uiGpuName);
+  return match?.id ?? uiGpuName.toLowerCase().replace(/\s+/g, '-');
+}
+
+function mapGpuToSystemId(uiGpuName: string): string | null {
+  const catalogId = mapGpuToCatalogId(uiGpuName);
+  const spec = GPU_CATALOG.find(g => g.id === catalogId);
+  return spec?.sizer_system_id ?? null;
+}
 
 const QUICK_ESTIMATE_TOUR: TourStep[] = [
   {
@@ -76,10 +86,23 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
+  const { gpuOptions: aicGpus, modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
+
+  const GPU_OPTIONS = aicGpus.length > 0
+    ? aicGpus.map(g => g.label)
+    : STATIC_GPU_OPTIONS;
+  const MODEL_OPTIONS = aicModels.length > 0 ? aicModels : STATIC_MODEL_OPTIONS;
+
   const [model, setModel] = React.useState('meta-llama/Meta-Llama-3.1-70B');
-  const [gpu, setGpu] = React.useState(
-    GPU_OPTIONS.find(g => g.includes('H200')) ?? GPU_OPTIONS[0]
-  );
+  const [gpu, setGpu] = React.useState('');
+
+  React.useEffect(() => {
+    if (GPU_OPTIONS.length > 0 && !gpu) {
+      const preferred = GPU_OPTIONS.find(g => g.includes('H200'));
+      setGpu(preferred ?? GPU_OPTIONS[0]);
+    }
+  }, [GPU_OPTIONS, gpu]);
+
   const [fav, setFav] = React.useState(false);
   const [showHf, setShowHf] = React.useState(false);
   const [hfToken, setHfToken] = React.useState('');
@@ -136,17 +159,6 @@ export default function QuickEstimate() {
 
   // Live pricing from Cloudflare Worker
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
-
-  const mapGpuToCatalogId = (uiGpuName: string): string => {
-    const match = GPU_OPTIONS_QE.find(g => g.label === uiGpuName);
-    return match?.id ?? uiGpuName.toLowerCase().replace(/\s+/g, '-');
-  };
-
-  const mapGpuToSystemId = (uiGpuName: string): string | null => {
-    const catalogId = mapGpuToCatalogId(uiGpuName);
-    const spec = GPU_CATALOG.find(g => g.id === catalogId);
-    return spec?.sizer_system_id ?? null;
-  };
 
   // Add loading state
   const [isCalculating, setIsCalculating] = React.useState(false);
@@ -208,7 +220,8 @@ export default function QuickEstimate() {
 
   // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
-    const systemId = mapGpuToSystemId(gpu);
+    const aicGpu = aicGpus.find(g => g.label === gpu);
+    const systemId = aicGpu?.systemId ?? mapGpuToSystemId(gpu);
     if (!systemId || !model) return;
 
     let cancelled = false;
