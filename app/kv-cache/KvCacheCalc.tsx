@@ -19,7 +19,7 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
-  const { modelOptions: aicModels } = useAicCatalog()
+  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog()
   const MODEL_OPTIONS = aicModels
 
   const [model, setModel] = React.useState('Qwen/Qwen3-32B')
@@ -140,7 +140,7 @@ export default function KvCacheCalc() {
               </datalist>
               {model && (
                 <span className={`${styles.modelChip} ${catalogMatch ? styles.modelChipCatalog : styles.modelChipCustom}`}>
-                  {catalogMatch ? 'In catalog' : 'Custom model'}
+                  {catalogMatch ? 'In catalog' : catalogLoading ? 'Loading...' : 'Custom model'}
                 </span>
               )}
             </div>

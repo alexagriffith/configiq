@@ -124,7 +124,7 @@ function friendlyErrorHint(code: string | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdvancedEstimate() {
-  const { modelOptions: aicModels } = useAicCatalog();
+  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
   const MODEL_OPTIONS = aicModels;
 
   // Input state
@@ -167,20 +167,23 @@ export default function AdvancedEstimate() {
 
   // Model status check + fetch HF config
   React.useEffect(() => {
+    if (catalogLoading) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
       const inCatalog = MODEL_OPTIONS.includes(model);
       setModelStatus(inCatalog ? 'catalog' : 'fetching');
-      fetchModelConfig(model, hfToken).then(r => {
-        if (r.success && r.config) {
-          setModelStatus(inCatalog ? 'catalog' : 'fetched');
-        } else {
-          if (!inCatalog) setModelStatus('error');
-        }
-      });
+      if (!inCatalog) {
+        fetchModelConfig(model, hfToken).then(r => {
+          if (r.success && r.config) {
+            setModelStatus('fetched');
+          } else {
+            setModelStatus('error');
+          }
+        });
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken, MODEL_OPTIONS]);
+  }, [model, hfToken, MODEL_OPTIONS, catalogLoading]);
 
   // Fetch live pricing
   React.useEffect(() => {
