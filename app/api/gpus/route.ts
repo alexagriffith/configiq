@@ -1,35 +1,27 @@
 // GET /api/gpus
-// GPU catalog endpoint with filtering + live pricing from Cloudflare Worker
+// GPU catalog endpoint — proxies to AIConfigurator /systems
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { ApiErrors } from '@/lib/api/errors'
-import { fetchHardwareDetailed } from '@/lib/api/gpus'
+import { fetchSystems } from '@/lib/api/gpus'
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
-    // ── AIConfigurator path (default) ──────────────────────────────────────
-    // Try AIC first unless the caller explicitly requests local data
-    try {
-        console.log('[GPUs API] Fetching hardware list from AIConfigurator...')
-        const gpus = await fetchHardwareDetailed()
-        console.log(`[GPUs API] Received ${gpus.length} systems from AIConfigurator`)
+    console.log('[GPUs API] Fetching systems from AIConfigurator...')
+    const systems = await fetchSystems(true)
+    console.log(`[GPUs API] Received ${systems.length} systems from AIConfigurator`)
 
-        return NextResponse.json(
-          { success: true, data: { gpus, count: gpus.length }, source: 'aiconfigurator' },
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400'
-            }
-          }
-        )
-    } catch (aicError) {
-      // Fall through to local catalog
-      console.error('[GPUs API] AIConfigurator unavailable.', aicError)
-      throw aicError
-    }
+    return NextResponse.json(
+      { success: true, data: { gpus: systems, count: systems.length }, source: 'aiconfigurator' },
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400'
+        }
+      }
+    )
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
@@ -37,6 +29,7 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       )
     }
+    console.error('[GPUs API] AIConfigurator unavailable.', error)
     return NextResponse.json(
       ApiErrors.INTERNAL_ERROR('Failed to fetch GPU catalog'),
       { status: 500 }

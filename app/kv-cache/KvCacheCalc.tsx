@@ -5,8 +5,7 @@ import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import { ComboBox } from '@/components/ModelComboBox/ModelComboBox'
 import type { ComboBoxItem } from '@/components/ModelComboBox/ModelComboBox'
 import { useCountUp } from '@/lib/hooks/useCountUp'
-import { Alert, Label, Spinner } from '@patternfly/react-core'
-import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
+import { Alert, Spinner } from '@patternfly/react-core'
 import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
@@ -35,8 +34,6 @@ export default function KvCacheCalc() {
       label: g.label,
       group: g.vendor,
     })), [gpuOptions])
-  const MODEL_OPTIONS = modelOptions
-
   const [model, setModel] = React.useState('Qwen/Qwen3-32B')
   const [system, setSystem] = React.useState(
     GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
@@ -74,8 +71,6 @@ export default function KvCacheCalc() {
       setModel(modelOptions[0])
     }
   }, [modelOptions, model])
-  const catalogMatch = MODEL_OPTIONS.includes(model)
-
   async function handleCalculate() {
     setLoading(true)
     setError(null)
@@ -154,33 +149,14 @@ export default function KvCacheCalc() {
         <div className={styles.inputRow}>
           <div className={styles.field}>
             <label htmlFor="kv-model" className={styles.fieldLabel}>Model — Hugging Face ID</label>
-            <div className={styles.modelInputWrapper}>
-              <input
-                type="text"
-                id="kv-model"
-                list="kv-models"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                placeholder="Type model name or select from dropdown..."
-                className={styles.modelInput}
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <datalist id="kv-models">
-                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
-              </datalist>
-              {model && (
-                <span className={styles.modelChip}>
-                  {catalogMatch ? (
-                    <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
-                  ) : catalogLoading ? (
-                    <Label color="blue" isCompact>Loading...</Label>
-                  ) : (
-                    <Label color="grey" isCompact>Custom model</Label>
-                  )}
-                </span>
-              )}
-            </div>
+            <ComboBox
+              id="kv-model"
+              value={model}
+              onChange={setModel}
+              items={modelItems}
+              placeholder="Type model name or select from dropdown..."
+              allowCustom
+            />
           </div>
 
           <div className={styles.field}>

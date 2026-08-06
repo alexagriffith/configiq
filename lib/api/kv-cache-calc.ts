@@ -65,8 +65,6 @@ export async function callKvCacheCalc(
   const startTime = performance.now()
 
   const baseUrl = process.env.AICONFIGURATOR_API_URL || ''
-  const username = process.env.AICONFIGURATOR_USERNAME
-  const password = process.env.AICONFIGURATOR_PASSWORD
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
   if (!baseUrl) {

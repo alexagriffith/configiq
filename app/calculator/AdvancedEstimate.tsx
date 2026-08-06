@@ -135,6 +135,12 @@ export default function AdvancedEstimate() {
       group: g.vendor,
     })), [gpuOptions]);
 
+  const modelItems: ComboBoxItem[] = React.useMemo(() =>
+    modelOptions.map(m => {
+      const slash = m.indexOf('/');
+      return { value: m, label: m, group: slash > 0 ? m.slice(0, slash) : '' };
+    }), [modelOptions]);
+
   const MODEL_OPTIONS = modelOptions;
 
   // Input state
@@ -275,37 +281,15 @@ export default function AdvancedEstimate() {
               Model — Hugging Face ID
               <StatusChip status={modelStatus} />
             </label>
-            <div className={styles.modelInputWrapper}>
-              <input
-                type="text"
-                className={styles.modelInput}
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                list="model-options"
-                placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <datalist id="model-options">
-                {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
-              </datalist>
-              <div className={styles.autoChipWrapper}>
-                {modelStatus === 'catalog' && (
-                  <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
-                )}
-                {modelStatus === 'fetching' && (
-                  <Label color="blue" isCompact>Fetching...</Label>
-                )}
-                {modelStatus === 'fetched' && (
-                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
-                )}
-                {modelStatus === 'error' && (
-                  <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>
-                )}
-              </div>
-            </div>
+            <ComboBox
+              value={model}
+              onChange={setModel}
+              items={modelItems}
+              placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
+              allowCustom
+            />
             <div className={styles.helperText}>
-              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
+              Type to filter by vendor or model name, or enter a custom Hugging Face path
             </div>
           </div>
 

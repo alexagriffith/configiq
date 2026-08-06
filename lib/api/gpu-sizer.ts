@@ -72,9 +72,6 @@ export async function callGpuSizer(
   const requestId = generateRequestId()
   const startTime = performance.now()
 
-  const url = process.env.GPU_SIZER_URL || ''
-  const username = process.env.GPU_SIZER_USERNAME
-  const password = process.env.GPU_SIZER_PASSWORD
   const baseUrl = process.env.AICONFIGURATOR_API_URL
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 

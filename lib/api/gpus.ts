@@ -1,35 +1,34 @@
 const DEFAULT_TIMEOUT_SECONDS = 30
 
-export interface AicHardwareSpec {
-  system: string
-  mem_bw: number
-  mem_bw_empirical_scaling_factor: number
-  mem_empirical_constant_latency: number
-  mem_capacity: number
-  bfloat16_tc_flops: number
-  int8_tc_flops: number
-  fp8_tc_flops: number
-  power: number
-  sm_version: number
+export interface AicSystemDetail {
+  id: string
+  name: string
+  vendor: string
+  architecture: string
+  memory_bytes: number
+  tdp_watts: number
+  gpus_per_node: number
 }
 
 function getAicConfig() {
   const baseUrl = process.env.AICONFIGURATOR_API_URL || ''
-  const username = process.env.AICONFIGURATOR_USERNAME || ''
-  const password = process.env.AICONFIGURATOR_PASSWORD || ''
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
   if (!baseUrl) {
     throw new Error('AICONFIGURATOR_API_URL is not configured')
   }
 
-  return { baseUrl, username, password, timeoutSeconds }
+  return { baseUrl, timeoutSeconds }
 }
 
-export async function fetchHardwareList(): Promise<string[]> {
+export async function fetchSystems(includeSpecs = false): Promise<AicSystemDetail[]> {
   const { baseUrl, timeoutSeconds } = getAicConfig()
 
-  const response = await fetch(`${baseUrl}/get_hardware`, {
+  const url = includeSpecs
+    ? `${baseUrl}/systems?include=specs`
+    : `${baseUrl}/systems`
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
     signal: AbortSignal.timeout(timeoutSeconds * 1000),
@@ -40,77 +39,24 @@ export async function fetchHardwareList(): Promise<string[]> {
   }
 
   const data = await response.json()
+  const systems = data?.systems
 
-  if (Array.isArray(data)) {
-    return data as string[]
+  if (!Array.isArray(systems)) {
+    throw new Error('Unexpected response format from /systems')
   }
 
-  throw new Error('Unexpected response format from /get_hardware')
+  return systems.map((s: Record<string, unknown>): AicSystemDetail => ({
+    id: typeof s.id === 'string' ? s.id : '',
+    name: typeof s.name === 'string' ? s.name : '',
+    vendor: typeof s.vendor === 'string' ? s.vendor : '',
+    architecture: typeof s.architecture === 'string' ? s.architecture : '',
+    memory_bytes: typeof s.memory_bytes === 'number' ? s.memory_bytes : 0,
+    tdp_watts: typeof s.tdp_watts === 'number' ? s.tdp_watts : 0,
+    gpus_per_node: typeof s.gpus_per_node === 'number' ? s.gpus_per_node : 0,
+  }))
 }
 
-export interface AicHardwareDetailed {
-  system: string
-  name: string
-  vendor: string
-  architecture: string
-  mem_capacity: number
-  mem_bw: number
-  bfloat16_tc_flops: number
-  power: number
-}
-
-export async function fetchHardwareDetailed(): Promise<AicHardwareDetailed[]> {
-  const { baseUrl, timeoutSeconds } = getAicConfig()
-
-  const [listRes, detailRes] = await Promise.all([
-    fetch(`${baseUrl}/get_hardware`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(timeoutSeconds * 1000),
-    }),
-    fetch(`${baseUrl}/get_hardware`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: 'true',
-      signal: AbortSignal.timeout(timeoutSeconds * 1000),
-    }),
-  ])
-
-  if (!listRes.ok) throw new Error(`AIConfigurator list returned HTTP ${listRes.status}`)
-  if (!detailRes.ok) throw new Error(`AIConfigurator detail returned HTTP ${detailRes.status}`)
-
-  const ids = await listRes.json() as string[]
-  const details = await detailRes.json() as Record<string, unknown>[]
-
-  return ids.map((id, i) => {
-    const d = details[i] ?? {}
-    return {
-      system: id,
-      name: (d.name as string) ?? id,
-      vendor: (d.vendor as string) ?? '',
-      architecture: (d.architecture as string) ?? '',
-      mem_capacity: (d.mem_capacity as number) ?? 0,
-      mem_bw: (d.mem_bw as number) ?? 0,
-      bfloat16_tc_flops: (d.bfloat16_tc_flops as number) ?? 0,
-      power: (d.power as number) ?? 0,
-    }
-  })
-}
-
-export async function fetchHardwareSpec(system: string): Promise<AicHardwareSpec> {
-  const { baseUrl, username, password, timeoutSeconds } = getAicConfig()
-
-  const response = await fetch(`${baseUrl}/get_hardware`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ system, username, password }),
-    signal: AbortSignal.timeout(timeoutSeconds * 1000),
-  })
-
-  if (!response.ok) {
-    throw new Error(`AIConfigurator returned HTTP ${response.status}`)
-  }
-
-  const data = await response.json()
-  return { system, ...data } as AicHardwareSpec
+export async function fetchSystemIds(): Promise<string[]> {
+  const systems = await fetchSystems(false)
+  return systems.map(s => s.id)
 }
