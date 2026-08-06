@@ -97,7 +97,7 @@ export default function QuickEstimate() {
     [aicModels],
   );
 
-  const [model, setModel] = React.useState('meta-llama/Meta-Llama-3.1-70B');
+  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpu, setGpu] = React.useState('');
 
   React.useEffect(() => {
