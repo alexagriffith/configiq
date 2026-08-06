@@ -71,10 +71,17 @@ export function useAicCatalog(): AicCatalog {
           const modelsData = await modelsRes.json()
 
           const systems = (systemsData.systems ?? []) as Record<string, unknown>[]
-          cachedGpus = systems.map(mapSystem)
+          const gpus = systems.map(mapSystem)
 
           const models = (modelsData.models ?? []) as unknown[]
-          cachedModels = models.filter((m): m is string => typeof m === 'string')
+          const modelList = models.filter((m): m is string => typeof m === 'string')
+
+          if (gpus.length === 0 || modelList.length === 0) {
+            throw new Error('AIC returned empty catalog')
+          }
+
+          cachedGpus = gpus
+          cachedModels = modelList
         })()
       }
 

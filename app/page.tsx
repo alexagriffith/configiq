@@ -23,7 +23,7 @@ import Link from "next/link";
 
 const tools = [
   {
-    title: "Quick Estimate",
+    title: "Quick estimate",
     description:
       "Fast GPU sizing from a model name and workload profile. Results in seconds.",
     href: "/quick-estimate",
