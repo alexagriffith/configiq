@@ -88,7 +88,7 @@ function deriveBottleneck(ttft: number, tpot: number): {
 export async function fetchRecommendAsInferenceResult(
   input: RecommendAdapterInput
 ): Promise<InferenceConfigResult> {
-  const res = await fetch('/api/recommend?include=config,memory', {
+  const res = await fetch('/api/recommend?mode=quick&include=config,memory', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -117,13 +117,19 @@ export async function fetchRecommendAsInferenceResult(
   const best = configs[0]
   const sc = best.serving_config
   const mb = best.memory_breakdown
-  const tp = best.tp ?? sc?.tensor_parallel_size ?? best.num_total_gpus ?? 1
-  const pp = best.pp ?? 1
   const replicas = best.replicas_needed ?? 1
+  const totalGpusNeeded = best.total_gpus_needed ?? best.num_total_gpus ?? 1
+  const gpusPerWorker = best.num_total_gpus ?? 1
+  const tp = best.tp ?? gpusPerWorker
+  const pp = best.pp ?? 1
   const totalVramGb = gpuVramGb(input.system)
   const gmu = sc?.gpu_memory_utilization ?? 0.9
   const hasBreakdown = !!mb
-  const weightGb = hasBreakdown ? mb.weights_bytes / GB : (best.memory ?? 0) * 0.5
+  const weightGb = hasBreakdown
+    ? mb.weights_bytes / GB
+    : typeof best.memory === 'number'
+      ? best.memory * 0.5
+      : totalVramGb * tp * 0.5
   const kvCacheGb = hasBreakdown && typeof mb.kv_cache_bytes === 'number' ? mb.kv_cache_bytes / GB : 0
   const usablePerGpu = totalVramGb * gmu
   const warnings: string[] = []

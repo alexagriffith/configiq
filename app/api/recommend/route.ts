@@ -14,7 +14,7 @@ const ERROR_STATUS_MAP: Record<string, number> = {
 
 const DEFAULT_TIMEOUT_SECONDS = 90
 
-async function proxyToAic(body: Record<string, unknown>, include: string): Promise<NextResponse> {
+async function proxyToAic(body: Record<string, unknown>, include: string, mode?: string | null): Promise<NextResponse> {
   const baseUrl = process.env.AICONFIGURATOR_API_URL
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
@@ -26,7 +26,9 @@ async function proxyToAic(body: Record<string, unknown>, include: string): Promi
   }
 
   try {
-    const res = await fetch(`${baseUrl}/recommend?include=${encodeURIComponent(include)}`, {
+    const params = new URLSearchParams({ include })
+    if (mode) params.set('mode', mode)
+    const res = await fetch(`${baseUrl}/recommend?${params.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(body),
@@ -65,9 +67,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const include = req.nextUrl.searchParams.get('include')
+    const mode = req.nextUrl.searchParams.get('mode')
 
     if (include) {
-      return proxyToAic(body, include)
+      return proxyToAic(body, include, mode)
     }
 
     const validated = GpuSizerRequestSchema.parse(body)
