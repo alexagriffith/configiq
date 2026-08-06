@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import {
-  Breadcrumb, BreadcrumbItem,
   Button,
   TextInput,
   FormSelect, FormSelectOption,
@@ -220,8 +219,8 @@ export default function QuickEstimate() {
   // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
     const aicGpu = aicGpus.find(g => g.label === gpu);
-    const systemId = aicGpu?.systemId ?? mapGpuToSystemId(gpu);
-    if (!systemId || !model) return;
+    const systemId = aicGpu?.systemId ?? mapGpuToSystemId(gpu) ?? null;
+    if (!systemId || !model || catalogLoading) return;
 
     let cancelled = false;
     setIsCalculating(true);
@@ -896,10 +895,6 @@ export default function QuickEstimate() {
       )}
       {/* ---------- header ---------- */}
       <div className={styles.header}>
-        <Breadcrumb>
-          <BreadcrumbItem>Estimate</BreadcrumbItem>
-          <BreadcrumbItem isActive>Quick estimate</BreadcrumbItem>
-        </Breadcrumb>
         <div className={styles.headRow}>
           <div>
             <h1 className={styles.pageTitle}>Quick estimate</h1>
@@ -1188,7 +1183,12 @@ export default function QuickEstimate() {
       )}
 
       {/* ---------- result tiles ---------- */}
-      <div className={styles.tilesGrid}>
+      {isCalculating && (
+        <div style={{ textAlign: 'center', padding: '8px 0', fontSize: '13px', color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-mono)' }}>
+          Calculating...
+        </div>
+      )}
+      <div className={styles.tilesGrid} style={{ opacity: isCalculating ? 0.5 : 1, transition: 'opacity 0.2s' }}>
         <div className={!matchesSearch('gpus required gpu count hardware h100 servers') ? styles.dimmed : ''} data-tour="result-tile-gpus">
           <FlipTile
             dark
@@ -1644,17 +1644,18 @@ export default function QuickEstimate() {
                     <span className={styles.cardTitle} style={{ fontSize: 16 }}>{sec.title}</span>
                     {'badge' in sec && sec.badge ? <Label isCompact color={sec.badgeColor as any}>{sec.badge}</Label> : null}
                     {'hasOverride' in sec && sec.hasOverride && (
-                      <Button
-                        variant="link"
-                        isInline
+                      <span
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           sec.onOverrideToggle?.();
                         }}
-                        style={{ fontSize: '13px', marginLeft: 'auto', padding: '4px 8px' }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); sec.onOverrideToggle?.(); } }}
+                        style={{ fontSize: '13px', marginLeft: 'auto', padding: '4px 8px', color: 'var(--gc-link)', cursor: 'pointer' }}
                       >
                         {sec.isOverridden ? '↺ Reset to auto' : '✎ Override'}
-                      </Button>
+                      </span>
                     )}
                     {!expanded.includes(sec.id) && (
                       <span className={styles.accSummary}>
