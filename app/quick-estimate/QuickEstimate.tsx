@@ -994,8 +994,8 @@ export default function QuickEstimate() {
             <Button
               variant="primary"
               size="lg"
-              onClick={() => setCalcTrigger(t => t + 1)}
-              isDisabled={isCalculating || !gpu}
+              onClick={() => { setTestResult(null); setCalcTrigger(t => t + 1); }}
+              isDisabled={isCalculating || !gpu || !model || catalogLoading}
             >
               {isCalculating ? 'Calculating...' : 'Calculate'}
             </Button>
