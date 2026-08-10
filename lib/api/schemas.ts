@@ -3,6 +3,26 @@
 
 import { z } from 'zod'
 
+// ═══ INFERENCE CONFIG REQUEST SCHEMA ═══
+
+export const InferenceConfigRequestSchema = z.object({
+  model_name: z.string().min(1, 'model_name is required'),
+  precision: z.enum(['FP16', 'FP8', 'INT8', 'INT4']),
+  gpu_type: z.string().min(1, 'gpu_type is required'),
+  gpu_count: z.number().int().positive().optional(),
+  concurrent_users: z.number().int().positive('concurrent_users must be positive'),
+  isl: z.number().int().positive('isl must be positive'),
+  osl: z.number().int().positive('osl must be positive'),
+  workload_type: z.enum(['chat', 'web_search', 'rag', 'batch', 'coding']),
+  sla_priority: z.enum(['ttft', 'tpot', 'throughput']),
+  network_topology: z.enum(['nvlink', 'infiniband', 'ethernet']).optional(),
+  enable_llmd: z.boolean().optional(),
+  hf_token: z.string().optional(),
+  kv_cache_precision: z.enum(['FP16', 'FP8']).optional()
+})
+
+export type InferenceConfigRequest = z.infer<typeof InferenceConfigRequestSchema>
+
 // ═══ GPU CATALOG QUERY SCHEMA ═══
 
 export const GpuCatalogQuerySchema = z.object({
@@ -68,16 +88,3 @@ export const KvCacheCalcRequestSchema = z.object({
 }).strict()
 
 export type KvCacheCalcRequest = z.infer<typeof KvCacheCalcRequestSchema>
-
-// ═══ INFERENCE CONFIG REQUEST SCHEMA (stub) ═══
-
-export const InferenceConfigRequestSchema = z.object({
-  model_name: z.string().min(1, 'model_name is required'),
-  gpu_type: z.string().default('h100_sxm'),
-  isl: z.number().int().positive().default(2048),
-  osl: z.number().int().positive().default(128),
-  concurrent_users: z.number().int().positive().default(10),
-  hf_token: z.string().nullish(),
-})
-
-export type InferenceConfigRequest = z.infer<typeof InferenceConfigRequestSchema>

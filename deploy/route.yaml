@@ -1,0 +1,22 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: configiq-route
+  namespace: psap-configiq
+  annotations:
+    haproxy.router.openshift.io/timeout: 120s
+  labels:
+    app: configiq
+    app.kubernetes.io/name: configiq
+spec:
+  host: configiq.apps.ocp4.intlab.redhat.com
+  to:
+    kind: Service
+    name: configiq-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
