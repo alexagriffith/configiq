@@ -99,7 +99,7 @@ export async function callGpuSizer(
 
   let response: Response
   try {
-    response = await fetch(`${baseUrl}/recommend`, {
+    response = await fetch(`${baseUrl}/recommend?include=config,memory`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

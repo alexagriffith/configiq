@@ -259,7 +259,7 @@ export default function AdvancedEstimate() {
   const gpuShortName = (currentGpu?.label ?? '').replace(/NVIDIA\s+/i, '').replace(/AMD\s+/i, '').split(' ')[0];
   const livePrice = livePricing[gpuShortName];
   const pricePerHour = livePrice ?? 30000 / (36 * 730);
-  const numGpus = result?.recommendation.totalGpus ?? 0;
+  const numGpus = result?.recommendation.gpusNeeded ?? 0;
   const monthlyCost = numGpus * pricePerHour * 730;
 
   return (
