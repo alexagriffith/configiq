@@ -1,0 +1,248 @@
+'use client';
+
+import * as React from 'react';
+import { Button, Label } from '@patternfly/react-core';
+import { EyeIcon, EyeSlashIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@patternfly/react-icons';
+import { useSettings, type InferenceBackend } from '@/contexts/SettingsContext';
+import { getAppConfig } from '@/lib/app-config';
+import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
+import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
+import styles from './Settings.module.css';
+
+type ModelStatus = 'idle' | 'catalog' | 'fetching' | 'fetched' | 'error';
+
+const BACKENDS: { value: InferenceBackend; label: string; description: string }[] = [
+  { value: 'vllm', label: 'vLLM', description: 'Open-source LLM inference engine; default for most deployments.' },
+  { value: 'tensorrt-llm', label: 'TensorRT-LLM', description: "NVIDIA's optimized inference library for maximum GPU throughput." },
+  { value: 'sglang', label: 'SGLang', description: 'Structured generation serving framework with fast batch processing.' },
+];
+
+export function Settings() {
+  const { hydrated, defaultModel, setDefaultModel, hfToken, setHfToken, inferenceBackend, setInferenceBackend, backendVersion, setBackendVersion } = useSettings();
+  const { modelOptions, isLoading: catalogLoading } = useAicCatalog();
+
+  const [localModel, setLocalModel] = React.useState('');
+  const [modelStatus, setModelStatus] = React.useState<ModelStatus>('idle');
+  const [hfReveal, setHfReveal] = React.useState(false);
+  const [modelSaved, setModelSaved] = React.useState(false);
+  const [tokenSaved, setTokenSaved] = React.useState(false);
+  const [backendSaved, setBackendSaved] = React.useState(false);
+
+  // Sync local model input once context has loaded from localStorage
+  const modelSynced = React.useRef(false);
+  React.useEffect(() => {
+    if (!hydrated || modelSynced.current) return;
+    modelSynced.current = true;
+    setLocalModel(defaultModel);
+  }, [hydrated, defaultModel]);
+
+  // Debounced auto-save for model (1500ms — gives the user time to finish typing)
+  React.useEffect(() => {
+    if (!modelSynced.current || localModel === defaultModel) return;
+    const timer = setTimeout(() => {
+      setDefaultModel(localModel);
+      setModelSaved(true);
+      const clear = setTimeout(() => setModelSaved(false), 3000);
+      return () => clearTimeout(clear);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [localModel, defaultModel, setDefaultModel]);
+
+  // Model catalog + HF status check (same debounced pattern as other pages)
+  React.useEffect(() => {
+    if (catalogLoading) { setModelStatus('idle'); return; }
+    if (!localModel || !localModel.includes('/')) { setModelStatus('idle'); return; }
+    const timer = setTimeout(() => {
+      const inCatalog = modelOptions.includes(localModel);
+      if (inCatalog) { setModelStatus('catalog'); return; }
+      setModelStatus('fetching');
+      fetchModelConfig(localModel, hfToken).then(r => {
+        setModelStatus(r.success && r.config ? 'fetched' : 'error');
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localModel, hfToken, modelOptions, catalogLoading]);
+
+  const handleTokenChange = (v: string) => {
+    setHfToken(v);
+    if (v.startsWith('hf_')) {
+      setTokenSaved(true);
+      setTimeout(() => setTokenSaved(false), 2000);
+    }
+  };
+
+  const handleBackendChange = (v: InferenceBackend) => {
+    setInferenceBackend(v); // also resets backendVersion to the default for v
+    setBackendSaved(true);
+    setTimeout(() => setBackendSaved(false), 3000);
+  };
+
+  const handleVersionChange = (v: string) => {
+    setBackendVersion(v);
+    setBackendSaved(true);
+    setTimeout(() => setBackendSaved(false), 3000);
+  };
+
+  const selectedBackend = BACKENDS.find(b => b.value === inferenceBackend);
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.pageTitle}>Settings</h1>
+        <p className={styles.subtitle}>
+          Configure once — defaults apply across all tools automatically.
+        </p>
+      </div>
+
+      <div className={styles.sections}>
+        {/* ── Default model ── */}
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionTitle}>Default model</div>
+              <div className={styles.sectionDesc}>
+                Pre-filled in Quick Estimate and Calculator. Use any Hugging Face model ID.
+              </div>
+            </div>
+            {modelSaved && (
+              <Label color="green" icon={<CheckCircleIcon />}>Saved</Label>
+            )}
+          </div>
+          <div className={styles.fieldWrap}>
+            <label className={styles.fieldLabel} htmlFor="settings-model">
+              Hugging Face model ID
+            </label>
+            <div className={styles.modelInputWrapper}>
+              <input
+                id="settings-model"
+                type="text"
+                list="settings-model-options"
+                value={localModel}
+                onChange={e => setLocalModel(e.target.value)}
+                placeholder={catalogLoading ? 'Loading catalog…' : 'e.g. Qwen/Qwen3-32B'}
+                className={styles.modelInput}
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <datalist id="settings-model-options">
+                {modelOptions.map(m => <option key={m} value={m} />)}
+              </datalist>
+              <div className={styles.autoChipWrapper}>
+                {modelStatus === 'catalog' && (
+                  <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
+                )}
+                {modelStatus === 'fetching' && (
+                  <Label color="blue" isCompact>Checking…</Label>
+                )}
+                {modelStatus === 'fetched' && (
+                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                )}
+                {modelStatus === 'error' && (
+                  <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>
+                )}
+              </div>
+            </div>
+            <div className={styles.helperText}>
+              All tools use this model by default. Type to autocomplete from the AIC catalog.
+            </div>
+          </div>
+        </div>
+
+        {/* ── HF token ── */}
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionTitle}>Hugging Face token</div>
+              <div className={styles.sectionDesc}>
+                Required for gated or private models. Stored in this browser only — never sent to our servers.
+              </div>
+            </div>
+            {tokenSaved && (
+              <Label color="green" icon={<CheckCircleIcon />}>Saved</Label>
+            )}
+          </div>
+          <div className={styles.fieldWrap}>
+            <label className={styles.fieldLabel} htmlFor="settings-hf-token">API token</label>
+            <div className={styles.tokenRow}>
+              <input
+                id="settings-hf-token"
+                type="text"
+                value={hfToken}
+                onChange={e => handleTokenChange(e.target.value)}
+                placeholder="hf_xxxxxxxxxxxxxxxxxxxx"
+                className={styles.textInput}
+                aria-label="Hugging Face API token"
+                autoComplete="off"
+                style={{ WebkitTextSecurity: hfReveal ? 'none' : 'disc' } as React.CSSProperties}
+              />
+              <Button
+                variant="control"
+                aria-label={hfReveal ? 'Hide token' : 'Show token'}
+                onClick={() => setHfReveal(r => !r)}
+                icon={hfReveal ? <EyeSlashIcon /> : <EyeIcon />}
+              />
+            </div>
+            <div className={styles.helperText}>
+              <a
+                href="https://huggingface.co/settings/tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.link}
+              >
+                Get a token at huggingface.co →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Inference backend ── */}
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionTitle}>Inference backend</div>
+              <div className={styles.sectionDesc}>
+                Serving framework targeted when generating configuration recommendations.
+              </div>
+            </div>
+            {backendSaved && (
+              <Label color="green" icon={<CheckCircleIcon />}>Saved</Label>
+            )}
+          </div>
+          <div className={styles.fieldWrap}>
+            <div className={styles.backendRow}>
+              <div className={styles.backendField}>
+                <label className={styles.fieldLabel} htmlFor="settings-backend">Backend</label>
+                <select
+                  id="settings-backend"
+                  value={inferenceBackend}
+                  onChange={e => handleBackendChange(e.target.value as InferenceBackend)}
+                  className={styles.selectInput}
+                >
+                  {BACKENDS.map(b => (
+                    <option key={b.value} value={b.value}>{b.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.versionField}>
+                <label className={styles.fieldLabel} htmlFor="settings-backend-version">Version</label>
+                <input
+                  id="settings-backend-version"
+                  type="text"
+                  value={backendVersion}
+                  onChange={e => handleVersionChange(e.target.value)}
+                  className={styles.textInput}
+                  placeholder={getAppConfig().backendVersions[inferenceBackend] ?? ''}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            {selectedBackend && (
+              <div className={styles.helperText}>{selectedBackend.description}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

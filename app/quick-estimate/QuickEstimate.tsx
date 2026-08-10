@@ -32,6 +32,7 @@ import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-co
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchRecommendAsInferenceResult } from '@/lib/api/recommend-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
+import { useSettings } from '@/contexts/SettingsContext';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
@@ -83,6 +84,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
+  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
   const { gpuOptions: aicGpus, modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
 
   const GPU_OPTIONS = React.useMemo(
@@ -91,8 +93,16 @@ export default function QuickEstimate() {
   );
   const MODEL_OPTIONS = aicModels;
 
-  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
+  const [model, setModel] = React.useState('');
   const [gpu, setGpu] = React.useState('');
+
+  // Set model from settings after context has loaded from localStorage
+  const modelFromSettings = React.useRef(false);
+  React.useEffect(() => {
+    if (!hydrated || modelFromSettings.current) return;
+    modelFromSettings.current = true;
+    setModel(settingsDefaultModel);
+  }, [hydrated, settingsDefaultModel]);
 
   React.useEffect(() => {
     if (GPU_OPTIONS.length > 0 && !gpu) {
@@ -102,9 +112,6 @@ export default function QuickEstimate() {
   }, [GPU_OPTIONS, gpu]);
 
   const [fav, setFav] = React.useState(false);
-  const [showHf, setShowHf] = React.useState(false);
-  const [hfToken, setHfToken] = React.useState('');
-  const [hfReveal, setHfReveal] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string[]>([]);
   const [showApi, setShowApi] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -161,26 +168,6 @@ export default function QuickEstimate() {
   // Add loading state
   const [isCalculating, setIsCalculating] = React.useState(false);
 
-  // Load saved HF token from localStorage on mount
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('hf_token');
-      if (savedToken && savedToken.startsWith('hf_')) {
-        setHfToken(savedToken);
-        console.log('🔑 Loaded HF token from localStorage');
-      }
-    }
-  }, []);
-
-  // Handle HF token changes and save to localStorage
-  const handleTokenChange = (newToken: string) => {
-    setHfToken(newToken);
-    if (typeof window !== 'undefined' && newToken && newToken.startsWith('hf_')) {
-      localStorage.setItem('hf_token', newToken);
-      console.log('💾 Saved HF token to localStorage');
-    }
-  };
-
   // Fetch HF config when model changes - ALWAYS fetch for accuracy
   React.useEffect(() => {
     // Reset fallback state
@@ -233,6 +220,7 @@ export default function QuickEstimate() {
           isl: testISL,
           osl: testOSL,
           concurrent_users: testConcurrentUsers,
+          backend: inferenceBackend,
         });
         if (!cancelled) {
           setTestResult(result);
@@ -966,9 +954,14 @@ export default function QuickEstimate() {
             </div>
             <div className={styles.helperText}>
               Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
-              {hfToken && hfToken.trim() && (
+              {hfToken ? (
                 <span style={{ marginLeft: '8px', color: '#0066cc', fontWeight: 500 }}>
-                  🔑 Token active ({hfToken.startsWith('hf_') ? '✓ valid format' : '⚠️ check format'})
+                  🔑 HF token active
+                </span>
+              ) : (
+                <span style={{ marginLeft: '8px' }}>
+                  Gated model?{' '}
+                  <a href="/settings" style={{ color: '#0066cc' }}>Add your HF token in Settings →</a>
                 </span>
               )}
             </div>
@@ -994,45 +987,6 @@ export default function QuickEstimate() {
           </div>
         </div>
 
-        <div style={{ marginTop: '18px' }}>
-          <label className={styles.fieldLabel} style={{ marginBottom: '8px', display: 'block' }}>
-            Hugging Face Token (optional — for gated or private models)
-          </label>
-          <div className={styles.hfPanel}>
-            <div className={styles.fieldRow} style={{ flex: 1 }}>
-              <input
-                type={hfReveal ? 'text' : 'password'}
-                value={hfToken}
-                onChange={(e) => handleTokenChange(e.target.value)}
-                placeholder="hf_xxxxxxxxxxxxxxxxxxxx"
-                aria-label="Hugging Face token"
-                className={styles.hfInput}
-                style={{
-                  flex: 1,
-                  border: '1px solid #b8bbbe',
-                  borderRadius: '4px',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  fontFamily: 'var(--sans)',
-                  minHeight: '42px'
-                }}
-              />
-              <Button
-                variant="control"
-                aria-label={hfReveal ? 'Hide token' : 'Show token'}
-                onClick={() => {
-                  console.log('Toggle clicked, current state:', hfReveal);
-                  setHfReveal(!hfReveal);
-                }}
-                icon={hfReveal ? <EyeSlashIcon /> : <EyeIcon />}
-              />
-            </div>
-            <Button variant="link" component="a" href="https://huggingface.co/settings/tokens" target="_blank">
-              Get a token
-            </Button>
-          </div>
-          <p className={styles.hfNote}>Stored in this browser only — never sent to our servers.</p>
-        </div>
       </div>
 
       {/* ---------- warning strip ---------- */}

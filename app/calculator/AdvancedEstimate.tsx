@@ -17,6 +17,7 @@ import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
+import { useSettings } from '@/contexts/SettingsContext';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 
 
@@ -124,22 +125,26 @@ function friendlyErrorHint(code: string | null): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdvancedEstimate() {
+  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
   const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
   const MODEL_OPTIONS = aicModels;
 
   // Input state
-  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
+  const [model, setModel] = React.useState('');
+
+  // Set model from settings after context has loaded from localStorage
+  const modelFromSettings = React.useRef(false);
+  React.useEffect(() => {
+    if (!hydrated || modelFromSettings.current) return;
+    modelFromSettings.current = true;
+    setModel(settingsDefaultModel);
+  }, [hydrated, settingsDefaultModel]);
   const [gpuSystem, setGpuSystem] = React.useState(
     GPU_OPTIONS_ADV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_ADV[0]?.systemId ?? ''
   );
   const [isl, setIsl] = React.useState(2048);
   const [osl, setOsl] = React.useState(128);
   const [ttft, setTtft] = React.useState(1000);
-
-  // HF token
-  const [hfToken, setHfToken] = React.useState('');
-  const [hfReveal, setHfReveal] = React.useState(false);
-  const [showHfSection, setShowHfSection] = React.useState(false);
 
   // Model status + HF config
   const [modelStatus, setModelStatus] = React.useState<'idle' | 'fetching' | 'catalog' | 'fetched' | 'error'>('idle');
@@ -154,16 +159,6 @@ export default function AdvancedEstimate() {
   // Live pricing
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
 
-  // Load HF token from localStorage
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('hf_token');
-      if (saved?.startsWith('hf_')) {
-        setHfToken(saved);
-        setShowHfSection(true);
-      }
-    }
-  }, []);
 
   // Model status check + fetch HF config
   React.useEffect(() => {
@@ -206,20 +201,12 @@ export default function AdvancedEstimate() {
     fetchPricing();
   }, []);
 
-  // Save HF token
-  const handleTokenChange = (val: string) => {
-    setHfToken(val);
-    if (typeof window !== 'undefined' && val.startsWith('hf_')) {
-      localStorage.setItem('hf_token', val);
-    }
-  };
-
   // Get GPU + model spec from catalog
   const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
   const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
 
   const handleCalculate = () => {
-    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32 });
+    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32, backend: inferenceBackend });
   };
 
   // Local memory analysis using the same engine as Quick Estimate
@@ -287,6 +274,14 @@ export default function AdvancedEstimate() {
             </div>
             <div className={styles.helperText}>
               Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
+              {hfToken ? (
+                <span style={{ marginLeft: '8px', color: '#0066cc', fontWeight: 500 }}>🔑 HF token active</span>
+              ) : (
+                <span style={{ marginLeft: '8px' }}>
+                  Gated model?{' '}
+                  <a href="/settings" style={{ color: '#0066cc' }}>Add your HF token in Settings →</a>
+                </span>
+              )}
             </div>
           </div>
 
@@ -378,40 +373,6 @@ export default function AdvancedEstimate() {
               </div>
             </div>
 
-            {/* HF Token */}
-            <div className={styles.hfSection}>
-              <div className={styles.fieldLabel} style={{ marginBottom: 8 }}>
-                Hugging Face token (optional — for gated or private models)
-              </div>
-              <div className={styles.hfRow}>
-                <input
-                  type={hfReveal ? 'text' : 'password'}
-                  className={styles.hfInput}
-                  value={hfToken}
-                  onChange={e => handleTokenChange(e.target.value)}
-                  placeholder="hf_..."
-                />
-                <button
-                  type="button"
-                  onClick={() => setHfReveal(!hfReveal)}
-                  style={{ background: 'none', border: '1px solid #d2d2d2', borderRadius: 4, padding: '8px 10px', cursor: 'pointer' }}
-                  aria-label={hfReveal ? 'Hide token' : 'Show token'}
-                >
-                  {hfReveal ? <EyeSlashIcon /> : <EyeIcon />}
-                </button>
-                <a
-                  href="https://huggingface.co/settings/tokens"
-                  target="_blank"
-                  rel="noopener"
-                  style={{ color: '#0066cc', fontWeight: 500, whiteSpace: 'nowrap', fontSize: 14 }}
-                >
-                  Get a token
-                </a>
-              </div>
-              <div className={styles.hfNote}>
-                Stored in this browser only — never sent to our servers.
-              </div>
-            </div>
 
             {/* Additional constraints */}
             <Accordion style={{ marginTop: 12 }}>
