@@ -30,7 +30,7 @@ import { SaveEstimateModal } from './SaveEstimateModal';
 import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
-import { fetchRecommendAsInferenceResult } from '@/lib/api/recommend-adapter';
+import { fetchEstimateAsInferenceResult } from '@/lib/api/estimate-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
@@ -93,7 +93,6 @@ export default function QuickEstimate() {
 
   const [model, setModel] = React.useState('Qwen/Qwen3-32B');
   const [gpu, setGpu] = React.useState('');
-  const [calcTrigger, setCalcTrigger] = React.useState(0);
 
   React.useEffect(() => {
     if (GPU_OPTIONS.length > 0 && !gpu) {
@@ -151,6 +150,9 @@ export default function QuickEstimate() {
   const [testConcurrentUsers, setTestConcurrentUsers] = React.useState(97);
   const [testISL, setTestISL] = React.useState(1000);
   const [testOSL, setTestOSL] = React.useState(150);
+  const [testTpSize, setTestTpSize] = React.useState(1);
+  const [testBatchSize, setTestBatchSize] = React.useState(128);
+  const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [testWorkloadType, setTestWorkloadType] = React.useState<'chat' | 'web_search' | 'rag' | 'batch' | 'coding'>('chat');
   const [testSLAPriority, setTestSLAPriority] = React.useState<'ttft' | 'tpot' | 'throughput'>('ttft');
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
@@ -228,12 +230,14 @@ export default function QuickEstimate() {
 
     const timer = setTimeout(async () => {
       try {
-        const result = await fetchRecommendAsInferenceResult({
+        const result = await fetchEstimateAsInferenceResult({
           model_path: model,
           system: systemId,
           isl: testISL,
           osl: testOSL,
-          concurrent_users: testConcurrentUsers,
+          batch_size: testBatchSize,
+          tp_size: testTpSize,
+          hf_model_config: hfConfig as Record<string, unknown> | null,
         });
         if (!cancelled) {
           setTestResult(result);
@@ -249,7 +253,7 @@ export default function QuickEstimate() {
     }, 500);
 
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [model, gpu, testConcurrentUsers, testISL, testOSL, aicGpus, calcTrigger]);
+  }, [model, gpu, testISL, testOSL, testTpSize, testBatchSize, aicGpus, hfConfig, calcTrigger]);
 
   // Fetch live pricing from Cloudflare Worker
   React.useEffect(() => {
@@ -777,31 +781,29 @@ export default function QuickEstimate() {
         }
       },
       summary: [
-        { k: 'TP', v: parallelismOverride && parallelismManualTP ? `${parallelismManualTP}` : testResult ? `${testResult.memory_analysis.tp_size}` : '—' },
-        { k: 'replicas', v: parallelismOverride && parallelismManualReplicas ? `${parallelismManualReplicas}` : testResult ? `${testResult.memory_analysis.replicas}` : '—' }
+        { k: 'TP', v: `${testTpSize}` },
+        { k: 'batch', v: `${testBatchSize}` },
       ],
       fields: [
         {
           label: 'Tensor parallel size',
-          value: parallelismOverride && parallelismManualTP !== null ? `${parallelismManualTP}` : testResult ? `${testResult.memory_analysis.tp_size}` : '—',
+          value: `${testTpSize}`,
           term: 'tensorParallel',
-          readonly: !parallelismOverride,
-          type: parallelismOverride ? 'number' as const : undefined,
-          onChange: parallelismOverride ? (val: string) => setParallelismManualTP(parseInt(val) || 1) : undefined
+          readonly: false,
+          type: 'number' as const,
+          onChange: (val: string) => setTestTpSize(parseInt(val) || 1),
         },
         {
-          label: 'Replica count',
-          value: parallelismOverride && parallelismManualReplicas !== null ? `${parallelismManualReplicas}` : testResult ? `${testResult.memory_analysis.replicas}` : '—',
-          readonly: !parallelismOverride,
-          type: parallelismOverride ? 'number' as const : undefined,
-          onChange: parallelismOverride ? (val: string) => setParallelismManualReplicas(parseInt(val) || 1) : undefined
+          label: 'Batch size',
+          value: `${testBatchSize}`,
+          readonly: false,
+          type: 'number' as const,
+          onChange: (val: string) => setTestBatchSize(parseInt(val) || 1),
         },
         {
           label: 'Total GPUs',
-          value: parallelismOverride && parallelismManualTP !== null && parallelismManualReplicas !== null
-            ? `${parallelismManualTP * parallelismManualReplicas}`
-            : testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas}` : '—',
-          readonly: true
+          value: testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas}` : `${testTpSize}`,
+          readonly: true,
         },
       ],
     },
@@ -898,7 +900,7 @@ export default function QuickEstimate() {
       <div className={styles.header}>
         <div className={styles.headRow}>
           <div>
-            <h1 className={styles.pageTitle}>Quick estimate</h1>
+            <h1 className={styles.pageTitle}>Performance estimate</h1>
             <p className={styles.subtitle}>Start with just a model name. We fill the rest, then let you tune every assumption.</p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>

@@ -19,6 +19,7 @@ import {
   BoltIcon,
   CalculatorIcon,
   MicrochipIcon,
+  SlidersHIcon,
   SearchIcon,
   ListIcon,
   HistoryIcon,
@@ -147,7 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavItemWithIcon
               icon={BoltIcon}
-              label="Quick estimate"
+              label="Performance estimate"
               href="/quick-estimate"
               isActive={pathname === "/quick-estimate"}
             />
@@ -158,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isActive={pathname === "/kv-cache"}
             />
             <NavItemWithIcon
-              icon={MicrochipIcon}
+              icon={SlidersHIcon}
               label="Advanced sizing"
               href="/calculator"
               isActive={pathname === "/calculator"}

@@ -12,6 +12,9 @@ import {
   Button,
 } from "@patternfly/react-core";
 import {
+  MigrationIcon,
+  ChartBarIcon,
+  SlidersHIcon,
   BoltIcon,
   CalculatorIcon,
   MicrochipIcon,
@@ -24,11 +27,18 @@ import Link from "next/link";
 
 const tools = [
   {
-    title: "Quick estimate",
+    title: "Performance estimate",
     description:
-      "Fast GPU sizing from a model name and workload profile. Results in seconds.",
+      "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
     href: "/quick-estimate",
     icon: <BoltIcon />,
+  },
+  {
+    title: "Advanced sizing",
+    description:
+      "Find the optimal GPU configuration for a workload target using the AIConfigurator engine.",
+    href: "/calculator",
+    icon: <SlidersHIcon />,
   },
   {
     title: "KV cache calculator",
@@ -38,14 +48,7 @@ const tools = [
     icon: <CalculatorIcon />,
   },
   {
-    title: "Advanced sizing",
-    description:
-      "Detailed GPU sizing with parallelism, quantization, KV cache, and cost modeling.",
-    href: "/calculator",
-    icon: <MicrochipIcon />,
-  },
-  {
-    title: "GPU explorer",
+    title: "GPU Explorer",
     description:
       "Search and compare GPUs across memory, throughput, cost, and availability.",
     href: "/gpu-explorer",

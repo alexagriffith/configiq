@@ -1,0 +1,135 @@
+/**
+ * Adapter that calls the AIC /estimate API and converts the response
+ * into the InferenceConfigResult shape used by the Performance Estimate page.
+ *
+ * Unlike the recommend adapter, /estimate takes explicit TP/PP/batch_size
+ * and returns TTFT/TPOT for that specific configuration. The caller is
+ * responsible for choosing the parallelism; this adapter does not search
+ * for an optimal config.
+ */
+
+import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config/types'
+import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus'
+
+const GB = 1_073_741_824
+
+export interface EstimateAdapterInput {
+  model_path: string
+  system: string
+  isl: number
+  osl: number
+  batch_size: number
+  tp_size: number
+  backend?: string
+  hf_model_config?: Record<string, unknown> | null
+}
+
+function gpuVramGb(systemId: string): number {
+  const gpu = GPU_CATALOG.find(g => g.sizer_system_id === systemId)
+  return gpu?.vram_gb ?? 141
+}
+
+function deriveBottleneck(ttft: number, tpot: number) {
+  if (ttft > 2000) {
+    return {
+      primary: 'TTFT' as const,
+      risk: 'High TTFT — users will notice slow first-token response.',
+      fix_suggestions: ['Increase TP to reduce prefill latency', 'Use chunked prefill'],
+    }
+  }
+  if (tpot > 50) {
+    return {
+      primary: 'TPOT' as const,
+      risk: 'High TPOT — generation will feel slow.',
+      fix_suggestions: ['Reduce batch size', 'Use a smaller quantization (FP8)'],
+    }
+  }
+  return {
+    primary: 'THROUGHPUT' as const,
+    risk: 'Balanced — no single bottleneck dominates.',
+    fix_suggestions: [],
+  }
+}
+
+export async function fetchEstimateAsInferenceResult(
+  input: EstimateAdapterInput
+): Promise<InferenceConfigResult> {
+  const body: Record<string, unknown> = {
+    model_path: input.model_path,
+    system: input.system,
+    backend: input.backend ?? 'vllm',
+    isl: input.isl,
+    osl: input.osl,
+    batch_size: input.batch_size,
+    tp_size: input.tp_size,
+  }
+
+  if (input.hf_model_config) {
+    body.model_config = input.hf_model_config
+  }
+
+  const res = await fetch('/api/estimate?include=config,memory', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const data = await res.json()
+
+  if (!res.ok || data?.status === 'failed') {
+    throw new Error(data?.error?.message ?? data?.detail ?? 'AIC estimate failed')
+  }
+
+  const tp = data.tp ?? input.tp_size
+  const pp = data.pp ?? 1
+  const sc = data.serving_config
+  const mb = data.memory_breakdown
+  const totalVramGb = gpuVramGb(input.system)
+  const gmu = sc?.gpu_memory_utilization ?? 0.9
+  const hasBreakdown = !!mb
+  const weightGb = hasBreakdown ? mb.weights_bytes / GB : (data.memory ?? 0) * 0.5
+  const kvCacheGb = hasBreakdown && typeof mb.kv_cache_bytes === 'number'
+    ? mb.kv_cache_bytes / GB
+    : 0
+  const usablePerGpu = totalVramGb * gmu
+  const maxNumSeqs = sc?.max_num_seqs ?? input.batch_size
+  const maxModelLen = sc?.max_model_len ?? (input.isl + input.osl)
+
+  return {
+    memory_analysis: {
+      weight_gb: weightGb,
+      weight_gb_per_gpu: weightGb / tp,
+      total_vram_gb: totalVramGb,
+      usable_hbm_per_gpu: usablePerGpu,
+      tp_size: tp,
+      replicas: 1,
+      kv_cache_budget_gb: usablePerGpu - weightGb / tp,
+      kv_cache_used_gb: kvCacheGb,
+      max_sequences_from_memory: maxNumSeqs,
+      kv_category: 'AIC',
+      kv_category_label: 'AIConfigurator estimate',
+    },
+    vllm_config: {
+      tensor_parallel_size: sc?.tensor_parallel_size ?? tp,
+      max_model_len: maxModelLen,
+      max_num_seqs: maxNumSeqs,
+      gpu_memory_utilization: gmu,
+      max_num_batched_tokens: Math.min(maxModelLen * maxNumSeqs, 32768),
+      enable_chunked_prefill: sc?.enable_chunked_prefill ?? false,
+      enable_prefix_caching: sc?.enable_prefix_caching ?? false,
+      quantization: sc?.quantization ?? 'auto',
+    },
+    parallelism_strategy: {
+      strategy: pp > 1 ? 'PP_ACROSS_NODES' : 'TP_ONLY',
+      pp_size: pp,
+      topology_note: `TP=${tp}, PP=${pp}, batch=${input.batch_size}`,
+    },
+    bottleneck_analysis: deriveBottleneck(data.ttft ?? 0, data.tpot ?? 0),
+    diagnostics: {
+      nvidia_smi_watch: 'nvidia-smi dmon -s pucvmet -d 1',
+      dcgm_metrics: ['DCGM_FI_PROF_GR_ENGINE_ACTIVE', 'DCGM_FI_DEV_FB_USED'],
+      vllm_metrics: ['vllm:num_requests_running', 'vllm:gpu_cache_usage_perc'],
+    },
+    warnings: hasBreakdown ? [] : ['Memory breakdown estimated (no backend_version specified).'],
+  }
+}
