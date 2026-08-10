@@ -14,7 +14,7 @@ import {
 import {
   MigrationIcon,
   ChartBarIcon,
-  CpuIcon,
+  SlidersHIcon,
   CalculatorIcon,
   RouteIcon,
   BoltIcon,
@@ -23,25 +23,25 @@ import Link from "next/link";
 
 const tools = [
   {
-    title: "Quick estimate",
+    title: "Performance estimate",
     description:
-      "Fast GPU sizing from a model name and workload profile. Results in seconds.",
+      "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
     href: "/quick-estimate",
     icon: <BoltIcon />,
   },
   {
-    title: "KV Cache Calculator",
+    title: "Advanced sizing",
+    description:
+      "Find the optimal GPU configuration for a workload target using the AIConfigurator engine.",
+    href: "/calculator",
+    icon: <SlidersHIcon />,
+  },
+  {
+    title: "KV cache calculator",
     description:
       "Calculate KV cache memory requirements for any model on supported GPU systems.",
     href: "/kv-cache",
     icon: <CalculatorIcon />,
-  },
-  {
-    title: "Advanced Calculator",
-    description:
-      "Detailed inference sizing with batching, quantization, KV cache, and cost modeling.",
-    href: "/calculator",
-    icon: <CpuIcon />,
   },
   {
     title: "GPU Explorer",

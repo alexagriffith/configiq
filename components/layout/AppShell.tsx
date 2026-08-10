@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavItemWithIcon
               icon={BoltIcon}
-              label="Quick estimate"
+              label="Performance estimate"
               href="/quick-estimate"
               isActive={pathname === "/quick-estimate"}
             />
@@ -158,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
             <NavItemWithIcon
               icon={SlidersHIcon}
-              label="Advanced estimate"
+              label="Advanced sizing"
               href="/calculator"
               isActive={pathname === "/calculator"}
             />
