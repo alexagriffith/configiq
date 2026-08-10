@@ -72,46 +72,53 @@ function mapModelDetail(name: string, c: Record<string, unknown>): ModelDetail {
 }
 
 // Module-level cache — shared across all components, survives re-renders
+// TTL of 10 minutes so new models appear without a hard refresh
+const CACHE_TTL_MS = 10 * 60 * 1000
 let cachedGpus: GpuOption[] | null = null
 let cachedModels: string[] | null = null
 let cachedModelDetails: ModelDetail[] | null = null
+let cacheTimestamp: number | null = null
 let fetchPromise: Promise<void> | null = null
 
+function isCacheValid(): boolean {
+  return cachedGpus !== null && cachedModels !== null &&
+    cacheTimestamp !== null && Date.now() - cacheTimestamp < CACHE_TTL_MS
+}
+
 export function useAicCatalog(): AicCatalog {
-  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>(cachedGpus ?? [])
-  const [modelOptions, setModelOptions] = useState<string[]>(cachedModels ?? [])
-  const [modelDetails, setModelDetails] = useState<ModelDetail[]>(cachedModelDetails ?? [])
-  const [isLoading, setIsLoading] = useState(cachedGpus === null)
+  const [gpuOptions, setGpuOptions] = useState<GpuOption[]>(isCacheValid() ? cachedGpus! : [])
+  const [modelOptions, setModelOptions] = useState<string[]>(isCacheValid() ? cachedModels! : [])
+  const [modelDetails, setModelDetails] = useState<ModelDetail[]>(isCacheValid() ? cachedModelDetails! : [])
+  const [isLoading, setIsLoading] = useState(!isCacheValid())
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (cachedGpus !== null && cachedModels !== null && cachedModelDetails !== null) {
-      setGpuOptions(cachedGpus)
-      setModelOptions(cachedModels)
-      setModelDetails(cachedModelDetails)
+    if (isCacheValid()) {
+      setGpuOptions(cachedGpus!)
+      setModelOptions(cachedModels!)
+      setModelDetails(cachedModelDetails!)
       setIsLoading(false)
       return
     }
 
+    fetchPromise = null  // reset so stale cache triggers a fresh fetch
+
     let cancelled = false
-    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://www.aiconfigurator.dev'
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://aic-backend.apps.ocp4.intlab.redhat.com'
 
     async function fetchCatalog() {
       if (!fetchPromise) {
         fetchPromise = (async () => {
-          const [systemsRes, modelsRes, detailedRes] = await Promise.all([
+          const [systemsRes, modelsRes] = await Promise.all([
             fetch(`${aicUrl}/systems?include=specs`),
             fetch(`${aicUrl}/models`),
-            fetch(`${aicUrl}/models?detailed=true`),
           ])
 
           if (!systemsRes.ok) throw new Error(`Systems fetch failed (${systemsRes.status})`)
           if (!modelsRes.ok) throw new Error(`Models fetch failed (${modelsRes.status})`)
-          if (!detailedRes.ok) throw new Error(`Detailed models fetch failed (${detailedRes.status})`)
 
           const systemsData = await systemsRes.json()
           const modelsData = await modelsRes.json()
-          const detailedData = await detailedRes.json()
 
           const systems = (systemsData.systems ?? []) as Record<string, unknown>[]
           const gpus = systems.map(mapSystem)
@@ -119,8 +126,19 @@ export function useAicCatalog(): AicCatalog {
           const models = (modelsData.models ?? []) as unknown[]
           const modelList = models.filter((m): m is string => typeof m === 'string')
 
-          const configs = (detailedData.models ?? []) as Record<string, unknown>[]
-          const details = modelList.map((name, i) => mapModelDetail(name, configs[i] ?? {}))
+          let details: ModelDetail[] = []
+
+          // Detailed model info is optional — don't block the catalog on it
+          try {
+            const detailedRes = await fetch(`${aicUrl}/models?detailed=true`)
+            if (detailedRes.ok) {
+              const detailedData = await detailedRes.json()
+              const configs = (detailedData.models ?? []) as Record<string, unknown>[]
+              details = modelList.map((name, i) => mapModelDetail(name, configs[i] ?? {}))
+            }
+          } catch {
+            // non-fatal
+          }
 
           if (gpus.length === 0 || modelList.length === 0) {
             throw new Error('AIC returned empty catalog')
@@ -129,6 +147,7 @@ export function useAicCatalog(): AicCatalog {
           cachedGpus = gpus
           cachedModels = modelList
           cachedModelDetails = details
+          cacheTimestamp = Date.now()
         })()
       }
 
