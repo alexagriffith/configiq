@@ -153,8 +153,6 @@ export default function QuickEstimate() {
   const [testTpSize, setTestTpSize] = React.useState(1);
   const [testBatchSize, setTestBatchSize] = React.useState(128);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
-  const [testWorkloadType, setTestWorkloadType] = React.useState<'chat' | 'web_search' | 'rag' | 'batch' | 'coding'>('chat');
-  const [testSLAPriority, setTestSLAPriority] = React.useState<'ttft' | 'tpot' | 'throughput'>('ttft');
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
   const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');
 
@@ -497,8 +495,6 @@ export default function QuickEstimate() {
         isl: testISL,
         osl: testOSL,
         concurrentUsers: testConcurrentUsers,
-        workloadType: testWorkloadType,
-        slaPriority: testSLAPriority,
         weightPrecision: testWeightPrecision,
         kvCachePrecision: testKVCachePrecision,
       },
@@ -538,8 +534,6 @@ export default function QuickEstimate() {
         isl_tokens: testISL,
         osl_tokens: testOSL,
         concurrent_users: testConcurrentUsers,
-        workload_type: testWorkloadType,
-        sla_priority: testSLAPriority
       },
       memory: {
         weight_precision: testWeightPrecision.toLowerCase(),
@@ -592,7 +586,7 @@ export default function QuickEstimate() {
     // Prepare data in CSV format
     const headers = [
       'Model', 'GPU', 'GPUs Required', 'TP Size', 'Replicas',
-      'ISL', 'OSL', 'Concurrent Users', 'Workload Type', 'SLA Priority',
+      'ISL', 'OSL', 'Concurrent Users',
       'Weight Precision', 'KV Cache Precision',
       'Weight Memory (GB)', 'KV Cache Total (GB)', 'KV Category',
       'Cloud Cost (Monthly)', 'Cloud Cost (5yr)',
@@ -601,7 +595,7 @@ export default function QuickEstimate() {
 
     const values = [
       model, gpu, realGpuCount, testResult.memory_analysis.tp_size, testResult.memory_analysis.replicas,
-      testISL, testOSL, testConcurrentUsers, testWorkloadType, testSLAPriority,
+      testISL, testOSL, testConcurrentUsers,
       testWeightPrecision, testKVCachePrecision,
       testResult.memory_analysis.weight_gb.toFixed(1),
       (testResult.memory_analysis.kv_cache_used_gb || 0).toFixed(1),
@@ -672,7 +666,6 @@ export default function QuickEstimate() {
         { k: 'ISL', v: `${testISL}` },
         { k: 'OSL', v: `${testOSL}` },
         { k: 'users', v: `${testConcurrentUsers}` },
-        { k: 'type', v: testWorkloadType }
       ],
       fields: [
         {
@@ -704,20 +697,6 @@ export default function QuickEstimate() {
           max: 50000,
           step: 1,
           onChange: (val: number) => setTestConcurrentUsers(val)
-        },
-        {
-          label: 'Workload type',
-          value: testWorkloadType,
-          type: 'select' as const,
-          options: ['chat', 'rag', 'coding', 'batch', 'web_search'] as const,
-          onChange: (val: string) => setTestWorkloadType(val as any)
-        },
-        {
-          label: 'SLA priority',
-          value: testSLAPriority,
-          type: 'select' as const,
-          options: ['ttft', 'tpot', 'throughput'] as const,
-          onChange: (val: string) => setTestSLAPriority(val as any)
         },
       ],
     },
