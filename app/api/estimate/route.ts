@@ -50,8 +50,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (!res.ok) {
+      const d = data as Record<string, unknown>
+      const raw = (
+        (d?.error as Record<string, unknown>)?.message ??
+        d?.detail ??
+        ''
+      ).toString().toLowerCase()
+      let code = 'AIC_NO_CONFIGURATION'
+      if (raw.includes('oom') || raw.includes('does not fit in gpu memory')) code = 'OOM'
+      else if (raw.includes('moe_ep_size') || raw.includes('moe_tp_size') || raw.includes('moe models')) code = 'MOE_PARAMS_REQUIRED'
+      else if (res.status === 401 || raw.includes('authentication') || raw.includes('gated')) code = 'AUTH_REQUIRED'
+      else if (res.status === 404 || raw.includes('not found')) code = 'MODEL_NOT_FOUND'
+      const message = ((d?.error as Record<string, unknown>)?.message ?? d?.detail ?? 'Unknown error').toString()
+      return NextResponse.json(
+        { status: 'failed', error: { code, message } },
+        { status: res.status, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } },
+      )
+    }
+
     return NextResponse.json(data, {
-      status: res.ok ? 200 : res.status,
+      status: 200,
       headers: {
         'Cache-Control': 'no-store',
         'Access-Control-Allow-Origin': '*',

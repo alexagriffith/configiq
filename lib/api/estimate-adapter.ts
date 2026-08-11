@@ -13,6 +13,13 @@ import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus'
 
 const GB = 1_073_741_824
 
+export class EstimateError extends Error {
+  constructor(public readonly code: string, message: string) {
+    super(message)
+    this.name = 'EstimateError'
+  }
+}
+
 export interface EstimateAdapterInput {
   model_path: string
   system: string
@@ -95,7 +102,9 @@ export async function fetchEstimateAsInferenceResult(
   const data = await res.json()
 
   if (!res.ok || data?.status === 'failed') {
-    throw new Error(data?.error?.message ?? data?.detail ?? 'AIC estimate failed')
+    const code = (data?.error as Record<string, unknown>)?.code as string ?? 'AIC_NO_CONFIGURATION'
+    const message = (data?.error as Record<string, unknown>)?.message as string ?? data?.detail as string ?? 'AIC estimate failed'
+    throw new EstimateError(code, message)
   }
 
   const tp = data.tp ?? input.tp_size

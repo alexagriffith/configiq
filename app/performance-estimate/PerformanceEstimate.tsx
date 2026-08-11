@@ -30,7 +30,7 @@ import { SaveEstimateModal } from './SaveEstimateModal';
 import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
-import { fetchEstimateAsInferenceResult } from '@/lib/api/estimate-adapter';
+import { fetchEstimateAsInferenceResult, EstimateError } from '@/lib/api/estimate-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -92,7 +92,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
   const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
-  const { gpuOptions: aicGpus, modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
+  const { gpuOptions: aicGpus, modelOptions: aicModels, modelSpecs, isLoading: catalogLoading } = useAicCatalog();
 
   const GPU_OPTIONS = React.useMemo(
     () => aicGpus.length > 0 ? aicGpus.map(g => g.label) : STATIC_GPU_OPTIONS,
@@ -128,6 +128,7 @@ export default function QuickEstimate() {
   // 🧪 TEST: Inference config engine integration
   const [testResult, setTestResult] = React.useState<InferenceConfigResult | null>(null);
   const [testError, setTestError] = React.useState<string | null>(null);
+  const [testErrorCode, setTestErrorCode] = React.useState<string | null>(null);
 
   // HuggingFace config fetching
   const [hfConfig, setHfConfig] = React.useState<HFModelConfig | null>(null);
@@ -230,6 +231,8 @@ export default function QuickEstimate() {
 
     const timer = setTimeout(async () => {
       try {
+        const spec = modelSpecs.get(model)
+        const isMoe = (spec?.num_experts ?? 0) > 1
         const result = await fetchEstimateAsInferenceResult({
           model_path: model,
           system: systemId,
@@ -239,14 +242,22 @@ export default function QuickEstimate() {
           tp_size: testTpSize,
           backend: inferenceBackend,
           hf_model_config: hfConfig as Record<string, unknown> | null,
+          ...(isMoe && { moe_ep_size: testTpSize }),
         });
         if (!cancelled) {
           setTestResult(result);
           setTestError(null);
+          setTestErrorCode(null);
         }
       } catch (error) {
         if (!cancelled) {
-          setTestError(error instanceof Error ? error.message : String(error));
+          if (error instanceof EstimateError) {
+            setTestErrorCode(error.code)
+            setTestError(error.message)
+          } else {
+            setTestErrorCode('AIC_UNAVAILABLE')
+            setTestError(error instanceof Error ? error.message : String(error))
+          }
         }
       } finally {
         if (!cancelled) {
@@ -1102,45 +1113,55 @@ export default function QuickEstimate() {
           <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '600', color: '#856404', marginBottom: '8px', fontSize: '16px' }}>
-              {testError.includes('401') || testError.includes('Authentication required')
-                ? '🔒 Authentication Required'
-                : testError.includes('404') || testError.includes('not found')
-                ? '❌ Model Not Found'
-                : testError.toLowerCase().includes('moe')
-                ? '🔀 MoE model requires expert parallelism config'
-                : '⚠️ Failed to Load Model'}
-            </div>
-            <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6', marginBottom: '12px' }}>
-              {testError}
+              {testErrorCode === 'OOM' ? 'Not enough GPU memory'
+                : testErrorCode === 'AUTH_REQUIRED' ? 'Authentication required'
+                : testErrorCode === 'MODEL_NOT_FOUND' ? 'Model not found'
+                : testErrorCode === 'MOE_PARAMS_REQUIRED' ? 'MoE model — expert parallelism required'
+                : testErrorCode === 'AIC_TIMEOUT' ? 'Request timed out'
+                : testErrorCode === 'AIC_UNAVAILABLE' ? 'Sizing service unavailable'
+                : 'Estimate failed'}
             </div>
 
-            {testError.toLowerCase().includes('moe') && (
-              <div style={{ fontSize: '13px', color: '#664d03', background: '#fff', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107', marginBottom: '12px' }}>
-                <strong>This is a Mixture-of-Experts (MoE) model.</strong> Add your HuggingFace token above so the model config can be loaded — expert parallelism will then be configured automatically.
-              </div>
-            )}
-
-            {(testError.includes('401') || testError.includes('Authentication required')) && (
-              <div style={{ fontSize: '13px', color: '#664d03', background: '#fff', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107', marginBottom: '12px' }}>
-                <strong>🔑 This model is gated (requires authentication):</strong>
-                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
-                  <li>Add your HuggingFace token in the &ldquo;HUGGING FACE TOKEN&rdquo; field above</li>
-                  <li>Get a token at: <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener" style={{ color: '#0066cc', textDecoration: 'underline' }}>https://huggingface.co/settings/tokens</a></li>
-                  <li>Make sure you&apos;ve accepted the model&apos;s license on HuggingFace</li>
+            {testErrorCode === 'OOM' ? (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                <p style={{ margin: '0 0 10px' }}>This model requires more GPU memory than available with the current tensor parallel size. Try one of:</p>
+                <ul style={{ margin: '0', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Increase tensor parallel size</strong> in the options above — double it and try again</li>
+                  <li><strong>Use a quantized variant</strong> — look for FP8 or INT4 versions of this model on HuggingFace</li>
+                  <li><strong>Select a larger GPU system</strong> — switch to a system with more VRAM per GPU</li>
                 </ul>
               </div>
+            ) : testErrorCode === 'AUTH_REQUIRED' ? (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                <p style={{ margin: '0 0 10px' }}>This model is gated and requires a HuggingFace token:</p>
+                <ul style={{ margin: '0', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li>Add your token in the <strong>HuggingFace token</strong> field above</li>
+                  <li>Get a token at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener" style={{ color: '#0066cc' }}>huggingface.co/settings/tokens</a></li>
+                  <li>Accept the model&apos;s license on HuggingFace first</li>
+                </ul>
+              </div>
+            ) : testErrorCode === 'MOE_PARAMS_REQUIRED' ? (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                This is a Mixture-of-Experts (MoE) model. Add your HuggingFace token above so the model config can be loaded — expert parallelism will then be configured automatically.
+              </div>
+            ) : testErrorCode === 'AIC_TIMEOUT' ? (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                The sizing engine took too long to respond. Try again, or use a smaller model or simpler configuration.
+              </div>
+            ) : testErrorCode === 'MODEL_NOT_FOUND' ? (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                <p style={{ margin: '0 0 10px' }}>This model wasn&apos;t found in the catalog. Check that:</p>
+                <ul style={{ margin: '0', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li>The HuggingFace ID is correct and case-sensitive (e.g. <code>meta-llama/Llama-3.1-8B</code>)</li>
+                  <li>It&apos;s not a GGUF repo — use the base model instead</li>
+                  <li>Popular supported models: {modelSuggestions()}</li>
+                </ul>
+              </div>
+            ) : (
+              <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6' }}>
+                {testError}
+              </div>
             )}
-
-            <div style={{ fontSize: '13px', color: '#664d03', background: '#fff', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107' }}>
-              <strong>✅ What to do now:</strong>
-              <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
-                <li><strong>Use the dropdown:</strong> Select a model from the autocomplete suggestions</li>
-                <li><strong>Supported models:</strong> {modelSuggestions()}</li>
-                <li><strong>Check spelling:</strong> Model names are case-sensitive (e.g., &ldquo;meta-llama&rdquo; not &ldquo;Meta-Llama&rdquo;)</li>
-                <li><strong>GGUF models?</strong> Use the original base model, not the GGUF repo (e.g., &ldquo;google/gemma-2-12b-it&rdquo; not &ldquo;unsloth/gemma-...-GGUF&rdquo;)</li>
-                <li><strong>Want a specific model?</strong> Let us know and we&apos;ll add it to the catalog</li>
-              </ol>
-            </div>
           </div>
         </div>
       )}
