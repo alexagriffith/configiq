@@ -31,7 +31,7 @@ export default function CostVolumeChart({ points, breakeven, currentDailyQueries
   if (points.length < 2) return null
 
   const maxQ = Math.max(...points.map(p => p.dailyQueries))
-  const maxCost = Math.max(...points.map(p => Math.max(p.frontier, p.selfHosted)))
+  const maxCost = Math.max(...points.map(p => Math.max(p.frontier, p.selfHosted ?? 0)))
   const safeMaxCost = maxCost || 1
 
   const nx = (q: number) => PAD.left + (q / (maxQ || 1)) * PW
@@ -40,14 +40,18 @@ export default function CostVolumeChart({ points, breakeven, currentDailyQueries
   const frontierPath = points
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${nx(p.dailyQueries).toFixed(1)},${ny(p.frontier).toFixed(1)}`)
     .join(' ')
-  const selfHostedPath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${nx(p.dailyQueries).toFixed(1)},${ny(p.selfHosted).toFixed(1)}`)
+  const selfHostedPoints = points.filter(p => p.selfHosted != null)
+  const hasSelfHostedData = selfHostedPoints.length >= 2
+  const selfHostedPath = selfHostedPoints
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${nx(p.dailyQueries).toFixed(1)},${ny(p.selfHosted!).toFixed(1)}`)
     .join(' ')
 
   const lastPt = points[points.length - 1]
   const firstPt = points[0]
   const frontierFill = `${frontierPath} L${nx(lastPt.dailyQueries).toFixed(1)},${ny(0).toFixed(1)} L${nx(firstPt.dailyQueries).toFixed(1)},${ny(0).toFixed(1)} Z`
-  const selfHostedFill = `${selfHostedPath} L${nx(lastPt.dailyQueries).toFixed(1)},${ny(0).toFixed(1)} L${nx(firstPt.dailyQueries).toFixed(1)},${ny(0).toFixed(1)} Z`
+  const selfHostedFill = hasSelfHostedData
+    ? `${selfHostedPath} L${nx(selfHostedPoints[selfHostedPoints.length - 1].dailyQueries).toFixed(1)},${ny(0).toFixed(1)} L${nx(selfHostedPoints[0].dailyQueries).toFixed(1)},${ny(0).toFixed(1)} Z`
+    : ''
 
   const yTicks = 5
   const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (safeMaxCost / yTicks) * i)
@@ -83,17 +87,17 @@ export default function CostVolumeChart({ points, breakeven, currentDailyQueries
         ))}
 
         <path d={frontierFill} fill="url(#frontierGrad)" />
-        <path d={selfHostedFill} fill="url(#selfHostedGrad)" />
+        {hasSelfHostedData && <path d={selfHostedFill} fill="url(#selfHostedGrad)" />}
 
         <path d={frontierPath} fill="none" stroke="var(--gc-c-orange, #b8390e)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={selfHostedPath} fill="none" stroke="var(--gc-success, #3e8635)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {hasSelfHostedData && <path d={selfHostedPath} fill="none" stroke="var(--gc-success, #3e8635)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
 
         {points.map((p, i) => (
           <g key={i}>
             <circle cx={nx(p.dailyQueries)} cy={ny(p.frontier)} r={p.dailyQueries === currentDailyQueries ? 4 : 2}
               fill="var(--gc-c-orange, #b8390e)" />
-            <circle cx={nx(p.dailyQueries)} cy={ny(p.selfHosted)} r={p.dailyQueries === currentDailyQueries ? 4 : 2}
-              fill="var(--gc-success, #3e8635)" />
+            {p.selfHosted != null && <circle cx={nx(p.dailyQueries)} cy={ny(p.selfHosted)} r={p.dailyQueries === currentDailyQueries ? 4 : 2}
+              fill="var(--gc-success, #3e8635)" />}
           </g>
         ))}
 
@@ -151,7 +155,7 @@ export default function CostVolumeChart({ points, breakeven, currentDailyQueries
 
       <div className={styles.chartLegend}>
         <span><span className={styles.legendDot} style={{ background: 'var(--gc-c-orange, #b8390e)' }} /> Frontier API</span>
-        <span><span className={styles.legendDot} style={{ background: 'var(--gc-success, #3e8635)' }} /> Self-hosted</span>
+        {hasSelfHostedData && <span><span className={styles.legendDot} style={{ background: 'var(--gc-success, #3e8635)' }} /> Self-hosted</span>}
         {breakeven !== null && (
           <span style={{ marginLeft: 'auto', fontFamily: 'var(--gc-font-mono)', fontSize: '12px' }}>
             Breakeven at ~{formatAxisQueries(breakeven)} queries/day
