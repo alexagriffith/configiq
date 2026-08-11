@@ -27,7 +27,6 @@ import styles from './PerformanceEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
 import { ProductTour, type TourStep } from '@/components/ProductTour';
 import { SaveEstimateModal } from './SaveEstimateModal';
-import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchEstimateAsInferenceResult, EstimateError } from '@/lib/api/estimate-adapter';
@@ -38,22 +37,13 @@ import { getAppConfig } from '@/lib/app-config';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
-const STATIC_GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
-
 function modelSuggestions(): string {
   const names = getAppConfig().suggestedModelNames;
   return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
 }
 
-function mapGpuToCatalogId(uiGpuName: string): string {
-  const match = GPU_OPTIONS_QE.find(g => g.label === uiGpuName);
-  return match?.id ?? uiGpuName.toLowerCase().replace(/\s+/g, '-');
-}
-
-function mapGpuToSystemId(uiGpuName: string): string | null {
-  const catalogId = mapGpuToCatalogId(uiGpuName);
-  const spec = GPU_CATALOG.find(g => g.id === catalogId);
-  return spec?.sizer_system_id ?? null;
+function gpuOptionLabel(label: string, vramGb: number | null): string {
+  return vramGb ? `${label} — ${vramGb} GB` : label;
 }
 
 const QUICK_ESTIMATE_TOUR: TourStep[] = [
@@ -94,14 +84,10 @@ export default function QuickEstimate() {
   const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
   const { gpuOptions: aicGpus, modelOptions: aicModels, modelSpecs, isLoading: catalogLoading } = useAicCatalog();
 
-  const GPU_OPTIONS = React.useMemo(
-    () => aicGpus.length > 0 ? aicGpus.map(g => g.label) : STATIC_GPU_OPTIONS,
-    [aicGpus],
-  );
   const MODEL_OPTIONS = aicModels;
 
   const [model, setModel] = React.useState('');
-  const [gpu, setGpu] = React.useState('');
+  const [gpu, setGpu] = React.useState(() => getAppConfig().defaultSystem);
 
   // Set model from settings after context has loaded from localStorage
   const modelFromSettings = React.useRef(false);
@@ -111,12 +97,12 @@ export default function QuickEstimate() {
     setModel(settingsDefaultModel);
   }, [hydrated, settingsDefaultModel]);
 
+  // If defaultSystem not in catalog, fall back to first available
   React.useEffect(() => {
-    if (GPU_OPTIONS.length > 0 && !gpu) {
-      const preferred = GPU_OPTIONS.find(g => g.includes('H200'));
-      setGpu(preferred ?? GPU_OPTIONS[0]);
+    if (aicGpus.length > 0 && !aicGpus.find(g => g.systemId === gpu)) {
+      setGpu(aicGpus[0].systemId);
     }
-  }, [GPU_OPTIONS, gpu]);
+  }, [aicGpus, gpu]);
 
   const [fav, setFav] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string[]>([]);
@@ -218,8 +204,8 @@ export default function QuickEstimate() {
 
   // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
-    const aicGpu = aicGpus.find(g => g.label === gpu);
-    const systemId = aicGpu?.systemId ?? mapGpuToSystemId(gpu) ?? null;
+    const aicGpu = aicGpus.find(g => g.systemId === gpu);
+    const systemId = aicGpu?.systemId ?? null;
     if (!systemId || !model || catalogLoading) return;
 
     if (calcTrigger === 0) return; // don't auto-run on mount
@@ -241,6 +227,8 @@ export default function QuickEstimate() {
           batch_size: testConcurrentUsers,
           tp_size: testTpSize,
           backend: inferenceBackend,
+          vram_gb: currentAicGpu?.vramGb ?? null,
+          gpu_memory_utilization: currentAicGpu?.gpuMemoryUtilization,
           hf_model_config: hfConfig as Record<string, unknown> | null,
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
@@ -390,6 +378,11 @@ export default function QuickEstimate() {
     return count;
   }, [debouncedQuery]);
 
+  // Nullable memory fields — null when VRAM is unknown (catalog not yet loaded)
+  const memUsablePerGpu = testResult?.memory_analysis.usable_hbm_per_gpu ?? 0
+  const memTotalVram = testResult?.memory_analysis.total_vram_gb ?? 0
+  const memKvBudget = testResult?.memory_analysis.kv_cache_budget_gb ?? 0
+
   // animated headline numbers
   // Calculate real values from inference engine
   const realGpuCount = testResult ?
@@ -435,22 +428,18 @@ export default function QuickEstimate() {
     0;
 
   // Use live pricing if available, fallback to estimated pricing from hardware cost
-  // Map UI GPU names to catalog IDs
-  const catalogGpuForPricing = GPU_CATALOG.find(g => g.id === mapGpuToCatalogId(gpu));
+  const currentAicGpu = aicGpus.find(g => g.systemId === gpu);
+  const gpuLabel = currentAicGpu?.label ?? '';
+  const catalogGpuForPricing = null as { hardware_cost_usd: number; name: string } | null; // pending Costings REST API
 
-  // Map UI GPU names to pricing keys (e.g., "NVIDIA H200 141GB" -> "H200")
-  const gpuPricingKey = gpu.includes('H200') ? 'H200' :
-                        gpu.includes('H100') ? 'H100' :
-                        gpu.includes('A100 80GB') ? 'A100 80GB' :
-                        gpu.includes('A100') ? 'A100' :
-                        gpu.includes('L40S') ? 'L40S' :
-                        gpu.includes('MI300X') ? 'MI300X' : gpu;
+  // Map GPU to pricing key for live pricing worker (pending Costings REST API)
+  const gpuPricingKey = gpuLabel.includes('H200') ? 'H200' :
+                        gpuLabel.includes('H100') ? 'H100' :
+                        gpuLabel.includes('A100') ? 'A100' :
+                        gpuLabel.includes('L40S') ? 'L40S' :
+                        gpuLabel.includes('MI300X') ? 'MI300X' : gpuLabel;
 
-  // Calculate estimated hourly price from hardware cost if live pricing unavailable
-  // Formula: hardware_cost_usd / (36 months * 730 hours/month) = $/hr
-  const estimatedHourlyPrice = catalogGpuForPricing
-    ? catalogGpuForPricing.hardware_cost_usd / (36 * 730)
-    : 2.49;
+  const estimatedHourlyPrice = 2.49; // pending Costings REST API
 
   const gpuPricePerHour = livePricing[gpuPricingKey] || estimatedHourlyPrice;
 
@@ -558,7 +547,7 @@ export default function QuickEstimate() {
         gpu_memory_utilization: 0.90
       },
       gpu: {
-        gpu_type: mapGpuToCatalogId(gpu),
+        gpu_type: gpu,
         tp_size: testResult.memory_analysis.tp_size,
         replicas: testResult.memory_analysis.replicas
       }
@@ -743,14 +732,17 @@ export default function QuickEstimate() {
     },
     {
       id: 'hardware', title: 'Hardware',
-      summary: [{ k: 'GPU', v: gpu }],
+      summary: [{ k: 'GPU', v: currentAicGpu ? gpuOptionLabel(currentAicGpu.label, currentAicGpu.vramGb) : gpu }],
       fields: [
         {
           label: 'GPU type',
           value: gpu,
           type: 'select' as const,
-          options: GPU_OPTIONS,
-          onChange: (val: string) => setGpu(val)
+          options: aicGpus.map(g => gpuOptionLabel(g.label, g.vramGb)),
+          onChange: (val: string) => {
+            const match = aicGpus.find(g => gpuOptionLabel(g.label, g.vramGb) === val)
+            if (match) setGpu(match.systemId)
+          }
         },
       ],
     },
@@ -982,7 +974,11 @@ export default function QuickEstimate() {
               aria-label="GPU target"
               className={styles.gpuSelect}
             >
-              {GPU_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+              {aicGpus.map(g => (
+                <option key={g.systemId} value={g.systemId}>
+                  {gpuOptionLabel(g.label, g.vramGb)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -1196,8 +1192,8 @@ export default function QuickEstimate() {
                 {testResult ? (
                   <>
                     weight memory = <span className={styles.em}>{testResult.memory_analysis.weight_gb.toFixed(1)} GB</span><br />
-                    usable / GPU = <span className={styles.em}>{testResult.memory_analysis.usable_hbm_per_gpu.toFixed(0)} GB</span><br />
-                    TP size = ⌈{testResult.memory_analysis.weight_gb.toFixed(0)} ÷ {testResult.memory_analysis.usable_hbm_per_gpu.toFixed(0)}⌉ = <span className={styles.em}>{testResult.memory_analysis.tp_size}</span><br />
+                    usable / GPU = <span className={styles.em}>{memUsablePerGpu.toFixed(0)} GB</span><br />
+                    TP size = ⌈{testResult.memory_analysis.weight_gb.toFixed(0)} ÷ {memUsablePerGpu.toFixed(0)}⌉ = <span className={styles.em}>{testResult.memory_analysis.tp_size}</span><br />
                     replicas = {testResult.memory_analysis.replicas}<br />
                     total = <span className={styles.em}>{Math.round(gpus)} GPUs</span>
                   </>
@@ -1465,8 +1461,8 @@ export default function QuickEstimate() {
                     <div style={{ marginTop: '8px', fontSize: '13px', lineHeight: '1.6' }}>
                       • Weight memory: <strong>{testResult.memory_analysis.weight_gb.toFixed(1)} GB</strong> ({actualWeightPrecision})<br/>
                       • Weight per GPU: <strong>{testResult.memory_analysis.weight_gb_per_gpu.toFixed(1)} GB</strong><br/>
-                      • Usable per GPU: <strong>{testResult.memory_analysis.usable_hbm_per_gpu.toFixed(0)} GB</strong> (90% of {gpu.includes('H200') ? '141' : '80'} GB)<br/>
-                      • Tensor Parallel size: <strong>{testResult.memory_analysis.tp_size}</strong> {testResult.memory_analysis.weight_gb > testResult.memory_analysis.usable_hbm_per_gpu ? '(required - weights don\'t fit in 1 GPU)' : '(weights fit, but using for replicas)'}
+                      • Usable per GPU: <strong>{memUsablePerGpu.toFixed(0)} GB</strong> (90% of {gpu.includes('H200') ? '141' : '80'} GB)<br/>
+                      • Tensor Parallel size: <strong>{testResult.memory_analysis.tp_size}</strong> {testResult.memory_analysis.weight_gb > memUsablePerGpu ? '(required - weights don\'t fit in 1 GPU)' : '(weights fit, but using for replicas)'}
                     </div>
                   </div>
 
@@ -1474,7 +1470,7 @@ export default function QuickEstimate() {
                     <strong style={{ color: '#995c00' }}>Workload Sizing</strong>
                     <div style={{ marginTop: '8px', fontSize: '13px', lineHeight: '1.6' }}>
                       • KV cache used: <strong>{testResult.memory_analysis.kv_cache_used_gb?.toFixed(1) || '—'} GB</strong> ({testKVCachePrecision}, {testConcurrentUsers} users)<br/>
-                      • KV cache budget: <strong>{testResult.memory_analysis.kv_cache_budget_gb.toFixed(1)} GB</strong> available<br/>
+                      • KV cache budget: <strong>{memKvBudget.toFixed(1)} GB</strong> available<br/>
                       • max_num_seqs: <strong>{testResult.vllm_config.max_num_seqs}</strong><br/>
                       • Replicas: <strong>{testResult.memory_analysis.replicas}</strong> (for throughput/redundancy)
                     </div>
@@ -1502,7 +1498,7 @@ export default function QuickEstimate() {
         <div className={styles.card} style={{ marginBottom: 20 }}>
           <div className={styles.cardHead}>
             <span className={styles.cardTitle}>Memory layout per GPU</span>
-            <span className={styles.cardHint}>{testResult.memory_analysis.usable_hbm_per_gpu.toFixed(0)} GB usable · {testResult.memory_analysis.tp_size} GPU{testResult.memory_analysis.tp_size > 1 ? 's' : ''} per model instance</span>
+            <span className={styles.cardHint}>{memUsablePerGpu.toFixed(0)} GB usable · {testResult.memory_analysis.tp_size} GPU{testResult.memory_analysis.tp_size > 1 ? 's' : ''} per model instance</span>
           </div>
           <div className={styles.cardBody}>
             <div style={{ marginBottom: '12px' }}>
@@ -1515,7 +1511,7 @@ export default function QuickEstimate() {
               }}>
                 {/* Weights */}
                 <div style={{
-                  width: `${(testResult.memory_analysis.weight_gb_per_gpu / testResult.memory_analysis.usable_hbm_per_gpu) * 100}%`,
+                  width: `${(testResult.memory_analysis.weight_gb_per_gpu / memUsablePerGpu) * 100}%`,
                   background: '#0066cc',
                   display: 'flex',
                   alignItems: 'center',
@@ -1528,7 +1524,7 @@ export default function QuickEstimate() {
                 </div>
                 {/* KV Cache */}
                 <div style={{
-                  width: `${((testResult.memory_analysis.kv_cache_used_gb || 0) / testResult.memory_analysis.tp_size / testResult.memory_analysis.usable_hbm_per_gpu) * 100}%`,
+                  width: `${((testResult.memory_analysis.kv_cache_used_gb || 0) / testResult.memory_analysis.tp_size / memUsablePerGpu) * 100}%`,
                   background: '#f59e0b',
                   display: 'flex',
                   alignItems: 'center',
@@ -1564,7 +1560,7 @@ export default function QuickEstimate() {
               </span>
               <span>
                 <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#e0e0e0', marginRight: '6px', borderRadius: '2px' }}></span>
-                Reserved: <strong>{(testResult.memory_analysis.total_vram_gb - testResult.memory_analysis.usable_hbm_per_gpu).toFixed(1)} GB</strong>
+                Reserved: <strong>{(memTotalVram - memUsablePerGpu).toFixed(1)} GB</strong>
               </span>
             </div>
           </div>

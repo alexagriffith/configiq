@@ -1,5 +1,6 @@
 export interface AppConfig {
   defaultModel: string;
+  defaultSystem: string;
   defaultBackend: string;
   backendVersions: Record<string, string>;
   supportedModels: string[];
@@ -9,6 +10,7 @@ export interface AppConfig {
 // Hardcoded fallback — used if /config.json fails to load
 const FALLBACK: AppConfig = {
   defaultModel: 'Qwen/Qwen3-32B',
+  defaultSystem: 'h200_sxm',
   defaultBackend: 'vllm',
   backendVersions: {
     'vllm': '0.24.0',
@@ -29,6 +31,7 @@ export async function loadAppConfig(): Promise<AppConfig> {
     const data = await res.json() as Partial<AppConfig>;
     cached = {
       defaultModel: data.defaultModel ?? FALLBACK.defaultModel,
+      defaultSystem: data.defaultSystem ?? FALLBACK.defaultSystem,
       defaultBackend: data.defaultBackend ?? FALLBACK.defaultBackend,
       backendVersions: data.backendVersions ?? FALLBACK.backendVersions,
       supportedModels: data.supportedModels ?? FALLBACK.supportedModels,

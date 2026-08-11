@@ -9,7 +9,6 @@
  */
 
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config/types'
-import { GPU_CATALOG, GPU_OPTIONS_QE } from '@/lib/gpu-math/gpus'
 
 const GB = 1_073_741_824
 
@@ -27,6 +26,8 @@ export interface EstimateAdapterInput {
   osl: number
   batch_size: number
   tp_size: number
+  vram_gb?: number | null
+  gpu_memory_utilization?: number
   backend?: string
   hf_model_config?: Record<string, unknown> | null
   moe_ep_size?: number
@@ -39,10 +40,6 @@ function isMoeConfig(config: Record<string, unknown> | null | undefined): boolea
   return typeof experts === 'number' && experts > 1
 }
 
-function gpuVramGb(systemId: string): number {
-  const gpu = GPU_CATALOG.find(g => g.sizer_system_id === systemId)
-  return gpu?.vram_gb ?? 141
-}
 
 function deriveBottleneck(ttft: number, tpot: number) {
   if (ttft > 2000) {
@@ -111,14 +108,14 @@ export async function fetchEstimateAsInferenceResult(
   const pp = data.pp ?? 1
   const sc = data.serving_config
   const mb = data.memory_breakdown
-  const totalVramGb = gpuVramGb(input.system)
-  const gmu = sc?.gpu_memory_utilization ?? 0.9
+  const totalVramGb = input.vram_gb ?? null
+  const gmu = sc?.gpu_memory_utilization ?? input.gpu_memory_utilization ?? 0.9
   const hasBreakdown = !!mb
   const weightGb = hasBreakdown ? mb.weights_bytes / GB : (data.memory ?? 0) * 0.5
   const kvCacheGb = hasBreakdown && typeof mb.kv_cache_bytes === 'number'
     ? mb.kv_cache_bytes / GB
     : 0
-  const usablePerGpu = totalVramGb * gmu
+  const usablePerGpu = totalVramGb != null ? totalVramGb * gmu : null
   const maxNumSeqs = sc?.max_num_seqs ?? input.batch_size
   const maxModelLen = sc?.max_model_len ?? (input.isl + input.osl)
 
@@ -130,7 +127,7 @@ export async function fetchEstimateAsInferenceResult(
       usable_hbm_per_gpu: usablePerGpu,
       tp_size: tp,
       replicas: 1,
-      kv_cache_budget_gb: usablePerGpu - weightGb / tp,
+      kv_cache_budget_gb: usablePerGpu != null ? usablePerGpu - weightGb / tp : null,
       kv_cache_used_gb: kvCacheGb,
       max_sequences_from_memory: maxNumSeqs,
       kv_category: 'AIC',

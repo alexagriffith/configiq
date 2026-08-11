@@ -12,6 +12,9 @@ export interface GpuOption {
   tflopsBf16: number | null
   tdpWatts: number | null
   gpusPerNode: number | null
+  /** Fraction of GPU memory available for the model + KV cache.
+   *  TODO: replace with per-backend value from AIC /memory response. */
+  gpuMemoryUtilization: number
 }
 
 /**
@@ -59,6 +62,7 @@ function mapSystem(s: Record<string, unknown>): GpuOption {
     tflopsBf16: typeof s.bf16_tflops === 'number' && s.bf16_tflops > 0 ? s.bf16_tflops : null,
     tdpWatts: typeof s.tdp_watts === 'number' ? s.tdp_watts : null,
     gpusPerNode: typeof s.gpus_per_node === 'number' ? s.gpus_per_node : null,
+    gpuMemoryUtilization: typeof s.gpu_memory_utilization === 'number' ? s.gpu_memory_utilization : 0.9,
   }
 }
 

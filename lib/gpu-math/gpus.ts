@@ -94,36 +94,6 @@ export function getGpusByMinVram(minVram: number): GpuSpec[] {
   return GPU_CATALOG.filter(gpu => gpu.vram_gb >= minVram)
 }
 
-// Default GPU for initial state
-export const DEFAULT_GPU = GPU_CATALOG.find(gpu => gpu.id === 'h100-80gb') || GPU_CATALOG[0]
-
-// GPUs available for Quick Estimate (all catalog GPUs with a display name)
-export const GPU_OPTIONS_QE = GPU_CATALOG.map(g => ({
-  id: g.id,
-  label: g.display_name,
-}))
-
-// GPUs available for Advanced Estimate (only those the external sizer API supports)
-export const GPU_OPTIONS_ADV = GPU_CATALOG
-  .filter((g): g is GpuSpec & { sizer_system_id: string } => g.sizer_system_id !== null)
-  .map(g => ({
-    id: g.id,
-    label: g.display_name,
-    systemId: g.sizer_system_id,
-  }))
-
-// GPUs available for KV Cache Calculator (AIConfigurator kv_cache_calc endpoint)
-export const GPU_OPTIONS_KV = [
-  { systemId: 'a30',        label: 'NVIDIA A30 24GB' },
-  { systemId: 'l4',         label: 'NVIDIA L4 24GB' },
-  { systemId: 'a100_pcie',  label: 'NVIDIA A100 80GB PCIe' },
-  { systemId: 'a100_sxm',   label: 'NVIDIA A100 80GB SXM' },
-  { systemId: 'h100_pcie',  label: 'NVIDIA H100 80GB PCIe' },
-  { systemId: 'h100_sxm',   label: 'NVIDIA H100 80GB SXM' },
-  { systemId: 'h200_sxm',   label: 'NVIDIA H200 141GB SXM' },
-  { systemId: 'b200_sxm',   label: 'NVIDIA B200 192GB SXM' },
-  { systemId: 'gb200',      label: 'NVIDIA GB200' },
-]
 
 // Backward compatibility - map new JSON schema to old API response format
 export interface GpuSpecLegacy {

@@ -1,5 +1,6 @@
 {
   "defaultModel": "Qwen/Qwen3-32B",
+  "defaultSystem": "h200_sxm",
   "defaultBackend": "vllm",
   "backendVersions": {
     "vllm": "0.24.0",

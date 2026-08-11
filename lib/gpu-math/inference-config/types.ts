@@ -37,11 +37,11 @@ export interface InferenceRequest {
 export interface MemoryAnalysis {
   weight_gb: number
   weight_gb_per_gpu: number
-  total_vram_gb: number       // Total GPU HBM capacity
-  usable_hbm_per_gpu: number
+  total_vram_gb: number | null
+  usable_hbm_per_gpu: number | null
   tp_size: number
   replicas: number
-  kv_cache_budget_gb: number  // Available memory for KV cache
+  kv_cache_budget_gb: number | null
   kv_cache_used_gb?: number   // Actual KV cache consumed by concurrent users
   max_sequences_from_memory: number
   kv_category?: string        // KV-1, KV-2, KV-3a, KV-3b, etc.

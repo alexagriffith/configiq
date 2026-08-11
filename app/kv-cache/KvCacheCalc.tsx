@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { Alert, Label, Spinner } from '@patternfly/react-core'
 import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
-import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/app/performance-estimate/quickEstimateHelpers'
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
@@ -23,15 +22,16 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 
 export default function KvCacheCalc() {
   const { hydrated, defaultModel: settingsDefaultModel, inferenceBackend, backendVersion: settingsBackendVersion } = useSettings()
-  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog()
+  const { modelOptions: aicModels, gpuOptions: aicGpus, isLoading: catalogLoading } = useAicCatalog()
   const MODEL_OPTIONS = aicModels
 
   const [model, setModel] = React.useState('')
-  const [system, setSystem] = React.useState(
-    GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
-  )
-  const [backend, setBackend] = React.useState('vllm')
-  const [backendVersion, setBackendVersion] = React.useState('0.24.0')
+  const [system, setSystem] = React.useState(() => getAppConfig().defaultSystem)
+  const [backend, setBackend] = React.useState(() => getAppConfig().defaultBackend)
+  const [backendVersion, setBackendVersion] = React.useState(() => {
+    const cfg = getAppConfig()
+    return cfg.backendVersions[cfg.defaultBackend] ?? ''
+  })
 
   // Initialise model, backend, and version from settings once context has loaded from localStorage
   const fromSettings = React.useRef(false)
@@ -180,8 +180,10 @@ export default function KvCacheCalc() {
               onChange={e => setSystem(e.target.value)}
               className={styles.gpuSelect}
             >
-              {GPU_OPTIONS_KV.map(g => (
-                <option key={g.systemId} value={g.systemId}>{g.label}</option>
+              {aicGpus.map(g => (
+                <option key={g.systemId} value={g.systemId}>
+                  {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                </option>
               ))}
             </select>
           </div>

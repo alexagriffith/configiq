@@ -13,7 +13,6 @@ import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 
 import styles from './AdvancedEstimate.module.css';
-import { GPU_CATALOG, GPU_OPTIONS_ADV } from '@/lib/gpu-math/gpus';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
@@ -132,7 +131,7 @@ function friendlyErrorHint(code: string | null): string {
 
 export default function AdvancedEstimate() {
   const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
-  const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
+  const { modelOptions: aicModels, gpuOptions: aicGpus, isLoading: catalogLoading } = useAicCatalog();
   const MODEL_OPTIONS = aicModels;
 
   // Input state
@@ -145,9 +144,7 @@ export default function AdvancedEstimate() {
     modelFromSettings.current = true;
     setModel(settingsDefaultModel);
   }, [hydrated, settingsDefaultModel]);
-  const [gpuSystem, setGpuSystem] = React.useState(
-    GPU_OPTIONS_ADV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_ADV[0]?.systemId ?? ''
-  );
+  const [gpuSystem, setGpuSystem] = React.useState(() => getAppConfig().defaultSystem);
   const [isl, setIsl] = React.useState(2048);
   const [osl, setOsl] = React.useState(128);
   const [ttft, setTtft] = React.useState(1000);
@@ -203,9 +200,7 @@ export default function AdvancedEstimate() {
     fetchPricing();
   }, []);
 
-  // Get GPU + model spec from catalog
-  const currentGpuOption = GPU_OPTIONS_ADV.find(g => g.systemId === gpuSystem) || GPU_OPTIONS_ADV[0];
-  const gpuSpec = GPU_CATALOG.find(g => g.id === currentGpuOption.id);
+  const currentGpuOption = aicGpus.find(g => g.systemId === gpuSystem) ?? aicGpus[0] ?? null;
 
   const handleCalculate = () => {
     startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32, backend: inferenceBackend });
@@ -219,9 +214,9 @@ export default function AdvancedEstimate() {
   const memVal = useCountUp(result?.memory.value ?? 0, 750, 1);
 
   // Cost calculations
-  const gpuShortName = currentGpuOption.label.replace(/NVIDIA\s+/i, '').replace(/AMD\s+/i, '').split(' ')[0];
+  const gpuShortName = (currentGpuOption?.label ?? '').replace(/NVIDIA\s+/i, '').replace(/AMD\s+/i, '').split(' ')[0];
   const livePrice = livePricing[gpuShortName];
-  const hwCost = gpuSpec?.hardware_cost_usd ?? 30000;
+  const hwCost = 30000; // pending Costings REST API
   const pricePerHour = livePrice ?? hwCost / (36 * 730);
   const numGpus = result?.recommendation.totalGpus ?? 0;
   const monthlyCost = numGpus * pricePerHour * 730;
@@ -297,13 +292,17 @@ export default function AdvancedEstimate() {
               value={gpuSystem}
               onChange={e => setGpuSystem(e.target.value)}
             >
-              {GPU_OPTIONS_ADV.map(g => (
-                <option key={g.systemId} value={g.systemId}>{g.label}</option>
+              {aicGpus.map(g => (
+                <option key={g.systemId} value={g.systemId}>
+                  {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                </option>
               ))}
             </select>
-            {gpuSpec && (
+            {currentGpuOption && (
               <div className={styles.helperText}>
-                {gpuSpec.vram_gb} GB · {gpuSpec.memory_bandwidth_tbps} TB/s · {gpuSpec.tflops_bf16} TFLOPS
+                {currentGpuOption.vramGb != null && <>{currentGpuOption.vramGb} GB</>}
+                {currentGpuOption.bandwidthTbps != null && <> · {currentGpuOption.bandwidthTbps} TB/s</>}
+                {currentGpuOption.tflopsBf16 != null && <> · {currentGpuOption.tflopsBf16.toFixed(0)} TFLOPS</>}
               </div>
             )}
           </div>
