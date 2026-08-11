@@ -23,14 +23,7 @@ import Link from "next/link";
 
 const tools = [
   {
-    title: "Performance estimate",
-    description:
-      "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
-    href: "/performance-estimate",
-    icon: <BoltIcon />,
-  },
-  {
-    title: "Advanced sizing",
+    title: "Recommend sizing",
     description:
       "Find the optimal GPU configuration for a workload target using the AIConfigurator engine.",
     href: "/calculator",
@@ -49,6 +42,13 @@ const tools = [
       "Compare GPUs across memory, throughput, and architecture generation.",
     href: "/gpu-explorer",
     icon: <ChartBarIcon />,
+  },
+  {
+    title: "Performance",
+    description:
+      "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
+    href: "/performance-estimate",
+    icon: <BoltIcon />,
   },
   {
     title: "Hybrid Savings",

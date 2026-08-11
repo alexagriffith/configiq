@@ -10,7 +10,7 @@ import EyeIcon from '@patternfly/react-icons/dist/esm/icons/eye-icon';
 import EyeSlashIcon from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon';
 import ExclamationTriangleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon';
 import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon';
-import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
+import { InfoStrip, InfoStripAction } from '@/components/ui/InfoStrip';
 
 import styles from './AdvancedEstimate.module.css';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
@@ -292,11 +292,14 @@ export default function AdvancedEstimate() {
               value={gpuSystem}
               onChange={e => setGpuSystem(e.target.value)}
             >
-              {aicGpus.map(g => (
-                <option key={g.systemId} value={g.systemId}>
-                  {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
-                </option>
-              ))}
+              {aicGpus.length === 0
+                ? <option value={gpuSystem} disabled>Loading GPU catalog…</option>
+                : aicGpus.map(g => (
+                    <option key={g.systemId} value={g.systemId}>
+                      {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                    </option>
+                  ))
+              }
             </select>
             {currentGpuOption && (
               <div className={styles.helperText}>
@@ -320,21 +323,12 @@ export default function AdvancedEstimate() {
         </div>
       </div>
 
-      {/* ─── Default assumptions info strip ─── */}
-      <div className={styles.infoStrip}>
-        <InfoCircleIcon style={{ color: '#0066cc', flexShrink: 0 }} />
-        <span>
-          Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(1)}s.
-          &nbsp;
-          <button
-            type="button"
-            onClick={() => setExpanded(expanded.includes('customize') ? expanded.filter(e => e !== 'customize') : [...expanded, 'customize'])}
-            style={{ background: 'none', border: 0, color: '#0066cc', fontWeight: 600, cursor: 'pointer', fontSize: 14, padding: 0 }}
-          >
-            Customize? (edit fields below)
-          </button>
-        </span>
-      </div>
+      <InfoStrip>
+        Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(1)}s.
+        {' '}<InfoStripAction onClick={() => setExpanded(expanded.includes('customize') ? expanded.filter(e => e !== 'customize') : [...expanded, 'customize'])}>
+          Adjust? (edit fields below)
+        </InfoStripAction>
+      </InfoStrip>
 
       {/* ─── Customization section (ISL/OSL/TTFT + HF token + constraints) ─── */}
       {expanded.includes('customize') && (

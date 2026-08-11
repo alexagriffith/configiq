@@ -29,6 +29,7 @@ export interface EstimateAdapterInput {
   vram_gb?: number | null
   gpu_memory_utilization?: number
   backend?: string
+  backend_version?: string
   hf_model_config?: Record<string, unknown> | null
   moe_ep_size?: number
   moe_tp_size?: number
@@ -75,6 +76,8 @@ export async function fetchEstimateAsInferenceResult(
     batch_size: input.batch_size,
     tp_size: input.tp_size,
   }
+
+  if (input.backend_version) body.backend_version = input.backend_version
 
   if (input.hf_model_config) {
     body.model_config = input.hf_model_config

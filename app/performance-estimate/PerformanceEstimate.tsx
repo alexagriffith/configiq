@@ -20,8 +20,6 @@ import LayerGroupIcon from '@patternfly/react-icons/dist/esm/icons/layer-group-i
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 import EyeIcon from '@patternfly/react-icons/dist/esm/icons/eye-icon';
 import EyeSlashIcon from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon';
-import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
-import TimesIcon from '@patternfly/react-icons/dist/esm/icons/times-icon';
 
 import styles from './PerformanceEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
@@ -30,6 +28,7 @@ import { SaveEstimateModal } from './SaveEstimateModal';
 import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-config';
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchEstimateAsInferenceResult, EstimateError } from '@/lib/api/estimate-adapter';
+import { InfoStrip, InfoStripAction } from '@/components/ui/InfoStrip';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -56,7 +55,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
   {
     target: '[data-tour="warning"]',
     title: 'Default assumptions',
-    description: 'Quick estimates start with common defaults. Click "Customize" to match your actual workload and traffic patterns.',
+    description: 'Quick estimates start with common defaults. Click "Adjust" to match your actual workload and traffic patterns.',
     position: 'bottom'
   },
   {
@@ -64,12 +63,6 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
     title: 'Your results at a glance',
     description: 'These tiles show GPU count, memory requirements, and monthly cost. Click any tile to see the math behind it.',
     position: 'right'
-  },
-  {
-    target: '[data-tour="search"]',
-    title: 'Find anything instantly',
-    description: 'Type "kv cache", "cost", or any term to filter and highlight matching sections. Great for focusing on specific metrics.',
-    position: 'bottom'
   },
   {
     target: '[data-tour="assumptions"]',
@@ -81,7 +74,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
-  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
+  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend, backendVersion } = useSettings();
   const { gpuOptions: aicGpus, modelOptions: aicModels, modelSpecs, isLoading: catalogLoading } = useAicCatalog();
 
   const MODEL_OPTIONS = aicModels;
@@ -107,7 +100,6 @@ export default function QuickEstimate() {
   const [fav, setFav] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string[]>([]);
   const [showApi, setShowApi] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
   const [showTour, setShowTour] = React.useState(false);
   const [tourSeen, setTourSeen] = React.useState(false);
 
@@ -148,9 +140,9 @@ export default function QuickEstimate() {
   const [toastMessage, setToastMessage] = React.useState('');
 
   // Interactive controls
-  const [testConcurrentUsers, setTestConcurrentUsers] = React.useState(97);
-  const [testISL, setTestISL] = React.useState(1000);
-  const [testOSL, setTestOSL] = React.useState(150);
+  const [testConcurrentUsers, setTestConcurrentUsers] = React.useState(32);
+  const [testISL, setTestISL] = React.useState(2048);
+  const [testOSL, setTestOSL] = React.useState(128);
   const [testTpSize, setTestTpSize] = React.useState(1);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [elapsed, setElapsed] = React.useState(0);
@@ -229,6 +221,7 @@ export default function QuickEstimate() {
           backend: inferenceBackend,
           vram_gb: currentAicGpu?.vramGb ?? null,
           gpu_memory_utilization: currentAicGpu?.gpuMemoryUtilization,
+          backend_version: backendVersion || undefined,
           hf_model_config: hfConfig as Record<string, unknown> | null,
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
@@ -346,37 +339,6 @@ export default function QuickEstimate() {
   };
 
   // Debounced search query
-  const [debouncedQuery, setDebouncedQuery] = React.useState('');
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 120);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const matchesSearch = (keywords: string) => {
-    if (!debouncedQuery.trim()) return true;
-    return keywords.toLowerCase().includes(debouncedQuery.toLowerCase());
-  };
-
-  // Count matches
-  const matchCount = React.useMemo(() => {
-    if (!debouncedQuery.trim()) return 0;
-    let count = 0;
-    const sections = [
-      'gpus required gpu count hardware h100 servers',
-      'weight memory params parameters model size gigabytes gb',
-      'kv cache key value memory tokens gqa request megabytes mb',
-      'cost monthly price dollars budget pricing',
-      'kv cache scenarios memory requests worst case typical prompt',
-      'why gpu count constraints memory fit kv cache scheduler batch tokens tensor parallel',
-      'drivers estimate range traffic peak concurrency isl osl prefix cache utilization'
-    ];
-    sections.forEach(keywords => {
-      if (keywords.toLowerCase().includes(debouncedQuery.toLowerCase())) count++;
-    });
-    return count;
-  }, [debouncedQuery]);
 
   // Nullable memory fields — null when VRAM is unknown (catalog not yet loaded)
   const memUsablePerGpu = testResult?.memory_analysis.usable_hbm_per_gpu ?? 0
@@ -678,31 +640,22 @@ export default function QuickEstimate() {
           label: 'Input sequence length (ISL)',
           value: testISL,
           term: 'isl',
-          type: 'range' as const,
-          min: 1,
-          max: 128000,
-          step: 128,
-          onChange: (val: number) => setTestISL(val)
+          type: 'number' as const,
+          onChange: (val: string) => setTestISL(Math.max(1, parseInt(val) || 1))
         },
         {
           label: 'Output sequence length (OSL)',
           value: testOSL,
           term: 'osl',
-          type: 'range' as const,
-          min: 1,
-          max: 16384,
-          step: 16,
-          onChange: (val: number) => setTestOSL(val)
+          type: 'number' as const,
+          onChange: (val: string) => setTestOSL(Math.max(1, parseInt(val) || 1))
         },
         {
           label: 'Concurrent users',
           value: testConcurrentUsers,
           term: 'concurrent',
-          type: 'range' as const,
-          min: 1,
-          max: 50000,
-          step: 1,
-          onChange: (val: number) => setTestConcurrentUsers(val)
+          type: 'number' as const,
+          onChange: (val: string) => setTestConcurrentUsers(Math.max(1, parseInt(val) || 1))
         },
       ],
     },
@@ -974,11 +927,14 @@ export default function QuickEstimate() {
               aria-label="GPU target"
               className={styles.gpuSelect}
             >
-              {aicGpus.map(g => (
-                <option key={g.systemId} value={g.systemId}>
-                  {gpuOptionLabel(g.label, g.vramGb)}
-                </option>
-              ))}
+              {aicGpus.length === 0
+                ? <option value={gpu} disabled>Loading GPU catalog…</option>
+                : aicGpus.map(g => (
+                    <option key={g.systemId} value={g.systemId}>
+                      {gpuOptionLabel(g.label, g.vramGb)}
+                    </option>
+                  ))
+              }
             </select>
           </div>
 
@@ -997,43 +953,12 @@ export default function QuickEstimate() {
 
       </div>
 
-      {/* ---------- warning strip ---------- */}
-      <div className={styles.warn} data-tour="warning">
-        <ExclamationTriangleIcon style={{ color: 'var(--gc-warn, #f0ab00)', flexShrink: 0 }} />
-        <span>
-          Based on your configuration — ISL {testISL}, OSL {testOSL}, {testKVCachePrecision} KV cache,
-          {' '}{testConcurrentUsers} concurrent users.
-        </span>
-        <button className={styles.warnLink} onClick={handleCustomizeClick}>
-          Customize? (Expand &apos;Assumptions&apos; section below)
-        </button>
-      </div>
+      <InfoStrip data-tour="warning">
+        Based on your configuration — ISL {testISL}, OSL {testOSL}, {testKVCachePrecision} KV cache,
+        {' '}{testConcurrentUsers} concurrent users.
+        {' '}<InfoStripAction onClick={handleCustomizeClick}>Adjust? (see &lsquo;Want to change assumptions?&rsquo; below)</InfoStripAction>
+      </InfoStrip>
 
-      {/* ---------- search ---------- */}
-      <div className={styles.searchBox} data-tour="search">
-        <SearchIcon className={styles.searchIcon} />
-        <input
-          type="text"
-          className={styles.searchInput}
-          placeholder="Find a result — e.g. KV cache, cost, GPUs, memory, latency, scheduler"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <>
-            <span className={styles.searchCount}>
-              {matchCount} {matchCount === 1 ? 'match' : 'matches'}
-            </span>
-            <button
-              className={styles.searchClear}
-              onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
-            >
-              <TimesIcon style={{ width: 14, height: 14 }} />
-            </button>
-          </>
-        )}
-      </div>
 
       {/* ---------- fallback warning ---------- */}
       {isUsingFallback && !testError && (
@@ -1163,13 +1088,19 @@ export default function QuickEstimate() {
       )}
 
       {/* ---------- result tiles ---------- */}
+      {!testResult && !isCalculating && !testError && (
+        <div className={styles.card} style={{ textAlign: 'center', padding: '40px 24px', color: 'var(--t2)' }}>
+          Select a model and GPU system above, then press <strong>Calculate</strong> to see results.
+        </div>
+      )}
       {isCalculating && (
         <div className={styles.card}>
           <GpuChipLoader elapsed={elapsed} />
         </div>
       )}
+      {(testResult || isCalculating) && (
       <div className={styles.tilesGrid} style={{ opacity: isCalculating ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-        <div className={!matchesSearch('gpus required gpu count hardware h100 servers') ? styles.dimmed : ''} data-tour="result-tile-gpus">
+        <div data-tour="result-tile-gpus">
           <FlipTile
             dark
           front={
@@ -1211,7 +1142,7 @@ export default function QuickEstimate() {
         />
         </div>
 
-        <div className={!matchesSearch('weight memory params parameters model size gigabytes gb') ? styles.dimmed : ''}>
+        <div>
           <FlipTile
             front={
               <>
@@ -1254,7 +1185,7 @@ export default function QuickEstimate() {
         />
         </div>
 
-        <div className={!matchesSearch('kv cache key value memory tokens gqa request megabytes mb') ? styles.dimmed : ''}>
+        <div>
           <FlipTile
             front={
               <>
@@ -1297,7 +1228,7 @@ export default function QuickEstimate() {
           />
         </div>
 
-        <div className={!matchesSearch('cost monthly cloud self-hosted savings price') ? styles.dimmed : ''} data-search="cost monthly cloud self-hosted savings price" style={{ display: 'none' }}>
+        <div style={{ display: 'none' }}>
           <FlipTile
             front={
             <>
@@ -1398,6 +1329,7 @@ export default function QuickEstimate() {
         />
         </div>
       </div>
+      )}
 
       {/* ---------- Why this GPU count ---------- */}
       {testResult && (

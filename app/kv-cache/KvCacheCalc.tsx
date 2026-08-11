@@ -180,11 +180,14 @@ export default function KvCacheCalc() {
               onChange={e => setSystem(e.target.value)}
               className={styles.gpuSelect}
             >
-              {aicGpus.map(g => (
-                <option key={g.systemId} value={g.systemId}>
-                  {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
-                </option>
-              ))}
+              {aicGpus.length === 0
+                ? <option value={system} disabled>Loading GPU catalog…</option>
+                : aicGpus.map(g => (
+                    <option key={g.systemId} value={g.systemId}>
+                      {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                    </option>
+                  ))
+              }
             </select>
           </div>
 

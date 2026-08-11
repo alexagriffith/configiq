@@ -145,10 +145,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div style={groupLabelStyle}>ESTIMATE</div>
 
             <NavItemWithIcon
-              icon={BoltIcon}
-              label="Performance estimate"
-              href="/performance-estimate"
-              isActive={pathname === "/performance-estimate"}
+              icon={SlidersHIcon}
+              label="Recommend sizing"
+              href="/calculator"
+              isActive={pathname === "/calculator"}
             />
             <NavItemWithIcon
               icon={CalculatorIcon}
@@ -157,16 +157,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isActive={pathname === "/kv-cache"}
             />
             <NavItemWithIcon
-              icon={SlidersHIcon}
-              label="Advanced sizing"
-              href="/calculator"
-              isActive={pathname === "/calculator"}
-            />
-            <NavItemWithIcon
               icon={CubesIcon}
               label="GPU explorer"
               href="/gpu-explorer"
               isActive={pathname === "/gpu-explorer"}
+            />
+            <NavItemWithIcon
+              icon={BoltIcon}
+              label="Performance"
+              href="/performance-estimate"
+              isActive={pathname === "/performance-estimate"}
             />
             {false && <NavItemWithIcon
               icon={ListIcon}
