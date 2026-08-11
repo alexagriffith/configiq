@@ -1,0 +1,30 @@
+{
+  "defaultModel": "Qwen/Qwen3-32B",
+  "defaultBackend": "vllm",
+  "backendVersions": {
+    "vllm": "0.24.0",
+    "tensorrt-llm": "11.2",
+    "sglang": "0.5.17"
+  },
+  "suggestedModelNames": ["Gemma 4", "Nemotron Super", "DeepSeek V4", "Kimi K3"],
+  "supportedModels": [
+    "google/gemma-4-26B-A4B",
+    "nvidia/Llama-3_3-Nemotron-Super-49B-v1",
+    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-FP8",
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "zai-org/GLM-5.2",
+    "zai-org/GLM-5.2-FP8",
+    "nvidia/GLM-5.2-NVFP4",
+    "deepseek-ai/DeepSeek-V4-Flash",
+    "sgl-project/DeepSeek-V4-Flash-FP8",
+    "deepseek-ai/DeepSeek-V4-Pro",
+    "sgl-project/DeepSeek-V4-Pro-FP8",
+    "moonshotai/Kimi-K2.5",
+    "nvidia/Kimi-K2.5-NVFP4",
+    "moonshotai/Kimi-K3"
+  ]
+}

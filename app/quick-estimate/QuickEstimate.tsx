@@ -33,10 +33,17 @@ import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchEstimateAsInferenceResult } from '@/lib/api/estimate-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
+import { useSettings } from '@/contexts/SettingsContext';
+import { getAppConfig } from '@/lib/app-config';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
 const STATIC_GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
+
+function modelSuggestions(): string {
+  const names = getAppConfig().suggestedModelNames;
+  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
+}
 
 function mapGpuToCatalogId(uiGpuName: string): string {
   const match = GPU_OPTIONS_QE.find(g => g.label === uiGpuName);
@@ -84,6 +91,7 @@ const QUICK_ESTIMATE_TOUR: TourStep[] = [
 
 export default function QuickEstimate() {
   console.log('🔵 QuickEstimate component mounting');
+  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend } = useSettings();
   const { gpuOptions: aicGpus, modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog();
 
   const GPU_OPTIONS = React.useMemo(
@@ -92,8 +100,16 @@ export default function QuickEstimate() {
   );
   const MODEL_OPTIONS = aicModels;
 
-  const [model, setModel] = React.useState('Qwen/Qwen3-32B');
+  const [model, setModel] = React.useState('');
   const [gpu, setGpu] = React.useState('');
+
+  // Set model from settings after context has loaded from localStorage
+  const modelFromSettings = React.useRef(false);
+  React.useEffect(() => {
+    if (!hydrated || modelFromSettings.current) return;
+    modelFromSettings.current = true;
+    setModel(settingsDefaultModel);
+  }, [hydrated, settingsDefaultModel]);
 
   React.useEffect(() => {
     if (GPU_OPTIONS.length > 0 && !gpu) {
@@ -103,9 +119,6 @@ export default function QuickEstimate() {
   }, [GPU_OPTIONS, gpu]);
 
   const [fav, setFav] = React.useState(false);
-  const [showHf, setShowHf] = React.useState(false);
-  const [hfToken, setHfToken] = React.useState('');
-  const [hfReveal, setHfReveal] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string[]>([]);
   const [showApi, setShowApi] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -163,33 +176,17 @@ export default function QuickEstimate() {
   // Add loading state
   const [isCalculating, setIsCalculating] = React.useState(false);
 
-  // Load saved HF token from localStorage on mount
+  // Fetch HF config when model changes
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('hf_token');
-      if (savedToken && savedToken.startsWith('hf_')) {
-        setHfToken(savedToken);
-        console.log('🔑 Loaded HF token from localStorage');
-      }
-    }
-  }, []);
-
-  // Handle HF token changes and save to localStorage
-  const handleTokenChange = (newToken: string) => {
-    setHfToken(newToken);
-    if (typeof window !== 'undefined' && newToken && newToken.startsWith('hf_')) {
-      localStorage.setItem('hf_token', newToken);
-      console.log('💾 Saved HF token to localStorage');
-    }
-  };
-
-  // Fetch HF config when model changes - ALWAYS fetch for accuracy
-  React.useEffect(() => {
-    // Reset fallback state
     setIsUsingFallback(false);
     setFallbackReason('');
 
-    // Always fetch for ALL models (catalog + custom)
+    // Skip HF fetch for supported and catalog models — we know they work
+    if (getAppConfig().supportedModels.includes(model) || MODEL_OPTIONS.includes(model)) {
+      setIsFetchingConfig(false);
+      return;
+    }
+
     const fetchConfig = async () => {
       setIsFetchingConfig(true);
       console.log('🔄 Fetching config from HuggingFace for:', model);
@@ -216,7 +213,7 @@ export default function QuickEstimate() {
     // Debounce to avoid fetching while user is typing
     const timer = setTimeout(fetchConfig, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken]);
+  }, [model, hfToken, hydrated]);
 
   // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
@@ -240,6 +237,7 @@ export default function QuickEstimate() {
           osl: testOSL,
           batch_size: testConcurrentUsers,
           tp_size: testTpSize,
+          backend: inferenceBackend,
           hf_model_config: hfConfig as Record<string, unknown> | null,
         });
         if (!cancelled) {
@@ -933,12 +931,14 @@ export default function QuickEstimate() {
                 {MODEL_OPTIONS.map((m) => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
-                {MODEL_OPTIONS.includes(model) ? (
+                {getAppConfig().supportedModels.includes(model) ? (
+                  <Label color="blue" icon={<CheckCircleIcon />}>Supported</Label>
+                ) : MODEL_OPTIONS.includes(model) ? (
                   <Label color="green" icon={<CheckCircleIcon />}>In catalog</Label>
                 ) : isFetchingConfig || catalogLoading ? (
-                  <Label color="blue">🔄 Checking model...</Label>
+                  <Label color="grey">Checking...</Label>
                 ) : hfConfig ? (
-                  <Label color="cyan" icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                  <Label color="gold" icon={<CheckCircleIcon />}>From HuggingFace</Label>
                 ) : testError ? (
                   <Label color="red" icon={<ExclamationTriangleIcon />}>Not found</Label>
                 ) : (
@@ -947,10 +947,15 @@ export default function QuickEstimate() {
               </div>
             </div>
             <div className={styles.helperText}>
-              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
-              {hfToken && hfToken.trim() && (
+              Supported: {modelSuggestions()} — type to autocomplete
+              {hfToken ? (
                 <span style={{ marginLeft: '8px', color: '#0066cc', fontWeight: 500 }}>
-                  🔑 Token active ({hfToken.startsWith('hf_') ? '✓ valid format' : '⚠️ check format'})
+                  🔑 HF token active
+                </span>
+              ) : (
+                <span style={{ marginLeft: '8px' }}>
+                  Gated model?{' '}
+                  <a href="/settings" style={{ color: '#0066cc' }}>Add your HF token in Settings →</a>
                 </span>
               )}
             </div>
@@ -983,45 +988,6 @@ export default function QuickEstimate() {
           </div>
         </div>
 
-        <div style={{ marginTop: '18px' }}>
-          <label className={styles.fieldLabel} style={{ marginBottom: '8px', display: 'block' }}>
-            Hugging Face Token (optional — for gated or private models)
-          </label>
-          <div className={styles.hfPanel}>
-            <div className={styles.fieldRow} style={{ flex: 1 }}>
-              <input
-                type={hfReveal ? 'text' : 'password'}
-                value={hfToken}
-                onChange={(e) => handleTokenChange(e.target.value)}
-                placeholder="hf_xxxxxxxxxxxxxxxxxxxx"
-                aria-label="Hugging Face token"
-                className={styles.hfInput}
-                style={{
-                  flex: 1,
-                  border: '1px solid #b8bbbe',
-                  borderRadius: '4px',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  fontFamily: 'var(--sans)',
-                  minHeight: '42px'
-                }}
-              />
-              <Button
-                variant="control"
-                aria-label={hfReveal ? 'Hide token' : 'Show token'}
-                onClick={() => {
-                  console.log('Toggle clicked, current state:', hfReveal);
-                  setHfReveal(!hfReveal);
-                }}
-                icon={hfReveal ? <EyeSlashIcon /> : <EyeIcon />}
-              />
-            </div>
-            <Button variant="link" component="a" href="https://huggingface.co/settings/tokens" target="_blank">
-              Get a token
-            </Button>
-          </div>
-          <p className={styles.hfNote}>Stored in this browser only — never sent to our servers.</p>
-        </div>
       </div>
 
       {/* ---------- warning strip ---------- */}
@@ -1161,7 +1127,7 @@ export default function QuickEstimate() {
               <strong>✅ What to do now:</strong>
               <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
                 <li><strong>Use the dropdown:</strong> Select a model from the autocomplete suggestions</li>
-                <li><strong>Popular models:</strong> Llama 3.1, Mistral, Qwen 2.5, DeepSeek, Gemma 2</li>
+                <li><strong>Supported models:</strong> {modelSuggestions()}</li>
                 <li><strong>Check spelling:</strong> Model names are case-sensitive (e.g., &ldquo;meta-llama&rdquo; not &ldquo;Meta-Llama&rdquo;)</li>
                 <li><strong>GGUF models?</strong> Use the original base model, not the GGUF repo (e.g., &ldquo;google/gemma-2-12b-it&rdquo; not &ldquo;unsloth/gemma-...-GGUF&rdquo;)</li>
                 <li><strong>Want a specific model?</strong> Let us know and we&apos;ll add it to the catalog</li>

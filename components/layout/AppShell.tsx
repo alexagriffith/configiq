@@ -207,8 +207,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavItemWithIcon
               icon={CogIcon}
               label="Settings"
-              href="#"
-              isActive={false}
+              href="/settings"
+              isActive={pathname === "/settings"}
             />
           </NavList>
         </Nav>

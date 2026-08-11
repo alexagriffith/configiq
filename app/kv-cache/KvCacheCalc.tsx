@@ -7,6 +7,8 @@ import { GPU_OPTIONS_KV } from '@/lib/gpu-math/gpus'
 import { formatBytes } from '@/lib/utils/format'
 import { useCountUp } from '@/app/quick-estimate/quickEstimateHelpers'
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
+import { useSettings, type InferenceBackend } from '@/contexts/SettingsContext'
+import { getAppConfig } from '@/lib/app-config'
 import type { KvCacheCalcResult } from '@/lib/api/kv-cache-calc'
 import styles from './KvCacheCalc.module.css'
 
@@ -20,15 +22,26 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
+  const { hydrated, defaultModel: settingsDefaultModel, inferenceBackend, backendVersion: settingsBackendVersion } = useSettings()
   const { modelOptions: aicModels, isLoading: catalogLoading } = useAicCatalog()
   const MODEL_OPTIONS = aicModels
 
-  const [model, setModel] = React.useState('Qwen/Qwen3-32B')
+  const [model, setModel] = React.useState('')
   const [system, setSystem] = React.useState(
     GPU_OPTIONS_KV.find(g => g.systemId === 'h200_sxm')?.systemId ?? GPU_OPTIONS_KV[0]?.systemId ?? ''
   )
   const [backend, setBackend] = React.useState('vllm')
   const [backendVersion, setBackendVersion] = React.useState('0.24.0')
+
+  // Initialise model, backend, and version from settings once context has loaded from localStorage
+  const fromSettings = React.useRef(false)
+  React.useEffect(() => {
+    if (!hydrated || fromSettings.current) return
+    fromSettings.current = true
+    setModel(settingsDefaultModel)
+    setBackend(inferenceBackend)
+    setBackendVersion(settingsBackendVersion)
+  }, [hydrated, settingsDefaultModel, inferenceBackend, settingsBackendVersion])
   const [maxNumTokens, setMaxNumTokens] = React.useState(8192)
   const [maxBatchSize, setMaxBatchSize] = React.useState(128)
   const [tpSize, setTpSize] = React.useState(1)
@@ -220,7 +233,7 @@ export default function KvCacheCalc() {
                   id="kv-backend-ver"
                   value={backendVersion}
                   onChange={e => setBackendVersion(e.target.value)}
-                  placeholder="latest"
+                  placeholder={getAppConfig().backendVersions[backend] ?? 'latest'}
                   className={styles.numberInput}
                 />
               </div>

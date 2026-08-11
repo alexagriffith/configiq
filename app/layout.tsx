@@ -41,6 +41,7 @@ import "./globals.css";
 import "./theme.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { GpuSizerProvider } from "@/contexts/GpuSizerContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 
 const redHatDisplay = Red_Hat_Display({
   subsets: ["latin"],
@@ -89,7 +90,9 @@ export default function RootLayout({
       </head>
       <body>
         <GpuSizerProvider>
-          <AppShell>{children}</AppShell>
+          <SettingsProvider>
+            <AppShell>{children}</AppShell>
+          </SettingsProvider>
         </GpuSizerProvider>
       </body>
     </html>
