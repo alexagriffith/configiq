@@ -32,6 +32,7 @@ import { fetchModelConfig, type HFModelConfig } from '@/lib/huggingface/fetch-co
 import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchEstimateAsInferenceResult } from '@/lib/api/estimate-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
+import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
@@ -153,6 +154,7 @@ export default function QuickEstimate() {
   const [testTpSize, setTestTpSize] = React.useState(1);
   const [testBatchSize, setTestBatchSize] = React.useState(128);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
+  const [elapsed, setElapsed] = React.useState(0);
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
   const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');
 
@@ -223,8 +225,12 @@ export default function QuickEstimate() {
     const systemId = aicGpu?.systemId ?? mapGpuToSystemId(gpu) ?? null;
     if (!systemId || !model || catalogLoading) return;
 
+    if (calcTrigger === 0) return; // don't auto-run on mount
+
     let cancelled = false;
     setIsCalculating(true);
+    setElapsed(0);
+    const elapsedTimer = setInterval(() => setElapsed(e => e + 1), 1000);
 
     const timer = setTimeout(async () => {
       try {
@@ -246,12 +252,15 @@ export default function QuickEstimate() {
           setTestError(error instanceof Error ? error.message : String(error));
         }
       } finally {
-        if (!cancelled) setIsCalculating(false);
+        if (!cancelled) {
+          setIsCalculating(false);
+          clearInterval(elapsedTimer);
+        }
       }
-    }, 500);
+    }, 0);
 
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [model, gpu, testISL, testOSL, testTpSize, testBatchSize, aicGpus, hfConfig, calcTrigger]);
+    return () => { cancelled = true; clearTimeout(timer); clearInterval(elapsedTimer); };
+  }, [calcTrigger]); // only fire on explicit Calculate press
 
   // Fetch live pricing from Cloudflare Worker
   React.useEffect(() => {
@@ -1173,8 +1182,8 @@ export default function QuickEstimate() {
 
       {/* ---------- result tiles ---------- */}
       {isCalculating && (
-        <div style={{ textAlign: 'center', padding: '8px 0', fontSize: '13px', color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-mono)' }}>
-          Calculating...
+        <div className={styles.card}>
+          <GpuChipLoader elapsed={elapsed} />
         </div>
       )}
       <div className={styles.tilesGrid} style={{ opacity: isCalculating ? 0.5 : 1, transition: 'opacity 0.2s' }}>
@@ -1306,7 +1315,7 @@ export default function QuickEstimate() {
           />
         </div>
 
-        <div className={!matchesSearch('cost monthly cloud self-hosted savings price') ? styles.dimmed : ''} data-search="cost monthly cloud self-hosted savings price">
+        <div className={!matchesSearch('cost monthly cloud self-hosted savings price') ? styles.dimmed : ''} data-search="cost monthly cloud self-hosted savings price" style={{ display: 'none' }}>
           <FlipTile
             front={
             <>
