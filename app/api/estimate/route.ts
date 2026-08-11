@@ -52,7 +52,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(data, {
       status: res.ok ? 200 : res.status,
-      headers: { 'Cache-Control': 'no-store' },
+      headers: {
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*',
+      },
     })
   } catch (err: unknown) {
     if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {

@@ -152,7 +152,6 @@ export default function QuickEstimate() {
   const [testISL, setTestISL] = React.useState(1000);
   const [testOSL, setTestOSL] = React.useState(150);
   const [testTpSize, setTestTpSize] = React.useState(1);
-  const [testBatchSize, setTestBatchSize] = React.useState(128);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [elapsed, setElapsed] = React.useState(0);
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
@@ -239,7 +238,7 @@ export default function QuickEstimate() {
           system: systemId,
           isl: testISL,
           osl: testOSL,
-          batch_size: testBatchSize,
+          batch_size: testConcurrentUsers,
           tp_size: testTpSize,
           hf_model_config: hfConfig as Record<string, unknown> | null,
         });
@@ -770,7 +769,6 @@ export default function QuickEstimate() {
       },
       summary: [
         { k: 'TP', v: `${testTpSize}` },
-        { k: 'batch', v: `${testBatchSize}` },
       ],
       fields: [
         {
@@ -780,13 +778,6 @@ export default function QuickEstimate() {
           readonly: false,
           type: 'number' as const,
           onChange: (val: string) => setTestTpSize(parseInt(val) || 1),
-        },
-        {
-          label: 'Batch size',
-          value: `${testBatchSize}`,
-          readonly: false,
-          type: 'number' as const,
-          onChange: (val: string) => setTestBatchSize(parseInt(val) || 1),
         },
         {
           label: 'Total GPUs',
