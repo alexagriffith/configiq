@@ -158,10 +158,12 @@ export default function KvCacheCalc() {
               </datalist>
               {model && (
                 <span className={styles.modelChip}>
-                  {catalogMatch ? (
+                  {getAppConfig().supportedModels.includes(model) ? (
+                    <Label color="blue" isCompact icon={<CheckCircleIcon />}>Supported</Label>
+                  ) : catalogMatch ? (
                     <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
                   ) : catalogLoading ? (
-                    <Label color="blue" isCompact>Loading...</Label>
+                    <Label color="grey" isCompact>Loading...</Label>
                   ) : (
                     <Label color="grey" isCompact>Custom model</Label>
                   )}
