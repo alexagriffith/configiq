@@ -33,10 +33,16 @@ import { saveEstimate, getSavedEstimateCount } from '@/lib/saved-estimates';
 import { fetchRecommendAsInferenceResult } from '@/lib/api/recommend-adapter';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { useSettings } from '@/contexts/SettingsContext';
+import { getAppConfig } from '@/lib/app-config';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
 const STATIC_GPU_OPTIONS = GPU_OPTIONS_QE.map(g => g.label);
+
+function modelSuggestions(): string {
+  const names = getAppConfig().suggestedModelNames;
+  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
+}
 
 function mapGpuToCatalogId(uiGpuName: string): string {
   const match = GPU_OPTIONS_QE.find(g => g.label === uiGpuName);
@@ -168,13 +174,17 @@ export default function QuickEstimate() {
   // Add loading state
   const [isCalculating, setIsCalculating] = React.useState(false);
 
-  // Fetch HF config when model changes - ALWAYS fetch for accuracy
+  // Fetch HF config when model changes
   React.useEffect(() => {
-    // Reset fallback state
     setIsUsingFallback(false);
     setFallbackReason('');
 
-    // Always fetch for ALL models (catalog + custom)
+    // Skip HF fetch for supported and catalog models — we know they work
+    if (getAppConfig().supportedModels.includes(model) || MODEL_OPTIONS.includes(model)) {
+      setIsFetchingConfig(false);
+      return;
+    }
+
     const fetchConfig = async () => {
       setIsFetchingConfig(true);
       console.log('🔄 Fetching config from HuggingFace for:', model);
@@ -201,7 +211,7 @@ export default function QuickEstimate() {
     // Debounce to avoid fetching while user is typing
     const timer = setTimeout(fetchConfig, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken]);
+  }, [model, hfToken, hydrated]);
 
   // Auto-run calculation when inputs change — calls AIC /recommend API
   React.useEffect(() => {
@@ -939,12 +949,14 @@ export default function QuickEstimate() {
                 {MODEL_OPTIONS.map((m) => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
-                {MODEL_OPTIONS.includes(model) ? (
+                {getAppConfig().supportedModels.includes(model) ? (
+                  <Label color="blue" icon={<CheckCircleIcon />}>Supported</Label>
+                ) : MODEL_OPTIONS.includes(model) ? (
                   <Label color="green" icon={<CheckCircleIcon />}>In catalog</Label>
                 ) : isFetchingConfig || catalogLoading ? (
-                  <Label color="blue">🔄 Checking model...</Label>
+                  <Label color="grey">Checking...</Label>
                 ) : hfConfig ? (
-                  <Label color="cyan" icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                  <Label color="gold" icon={<CheckCircleIcon />}>From HuggingFace</Label>
                 ) : testError ? (
                   <Label color="red" icon={<ExclamationTriangleIcon />}>Not found</Label>
                 ) : (
@@ -953,7 +965,7 @@ export default function QuickEstimate() {
               </div>
             </div>
             <div className={styles.helperText}>
-              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
+              Supported: {modelSuggestions()} — type to autocomplete
               {hfToken ? (
                 <span style={{ marginLeft: '8px', color: '#0066cc', fontWeight: 500 }}>
                   🔑 HF token active
@@ -1126,7 +1138,7 @@ export default function QuickEstimate() {
               <strong>✅ What to do now:</strong>
               <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
                 <li><strong>Use the dropdown:</strong> Select a model from the autocomplete suggestions</li>
-                <li><strong>Popular models:</strong> Llama 3.1, Mistral, Qwen 2.5, DeepSeek, Gemma 2</li>
+                <li><strong>Supported models:</strong> {modelSuggestions()}</li>
                 <li><strong>Check spelling:</strong> Model names are case-sensitive (e.g., &ldquo;meta-llama&rdquo; not &ldquo;Meta-Llama&rdquo;)</li>
                 <li><strong>GGUF models?</strong> Use the original base model, not the GGUF repo (e.g., &ldquo;google/gemma-2-12b-it&rdquo; not &ldquo;unsloth/gemma-...-GGUF&rdquo;)</li>
                 <li><strong>Want a specific model?</strong> Let us know and we&apos;ll add it to the catalog</li>

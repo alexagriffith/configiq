@@ -18,6 +18,12 @@ import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { useSettings } from '@/contexts/SettingsContext';
+import { getAppConfig } from '@/lib/app-config';
+
+function modelSuggestions(): string {
+  const names = getAppConfig().suggestedModelNames;
+  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
+}
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 
 
@@ -147,7 +153,7 @@ export default function AdvancedEstimate() {
   const [ttft, setTtft] = React.useState(1000);
 
   // Model status + HF config
-  const [modelStatus, setModelStatus] = React.useState<'idle' | 'fetching' | 'catalog' | 'fetched' | 'error'>('idle');
+  const [modelStatus, setModelStatus] = React.useState<'idle' | 'supported' | 'catalog' | 'fetching' | 'fetched' | 'error'>('idle');
 
   // GPU sizer (persistent across navigation)
   const { isLoading, result, error, errorCode, elapsed, debugRequest, debugResponse, debugStatus, debugDuration, startSizing } = useGpuSizer();
@@ -165,20 +171,16 @@ export default function AdvancedEstimate() {
     if (catalogLoading) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
+      if (getAppConfig().supportedModels.includes(model)) { setModelStatus('supported'); return; }
       const inCatalog = MODEL_OPTIONS.includes(model);
-      setModelStatus(inCatalog ? 'catalog' : 'fetching');
-      if (!inCatalog) {
-        fetchModelConfig(model, hfToken).then(r => {
-          if (r.success && r.config) {
-            setModelStatus('fetched');
-          } else {
-            setModelStatus('error');
-          }
-        });
-      }
+      if (inCatalog) { setModelStatus('catalog'); return; }
+      setModelStatus('fetching');
+      fetchModelConfig(model, hfToken).then(r => {
+        setModelStatus(r.success && r.config ? 'fetched' : 'error');
+      });
     }, 500);
     return () => clearTimeout(timer);
-  }, [model, hfToken, MODEL_OPTIONS, catalogLoading]);
+  }, [model, hfToken, MODEL_OPTIONS, catalogLoading, hydrated]);
 
   // Fetch live pricing
   React.useEffect(() => {
@@ -258,14 +260,17 @@ export default function AdvancedEstimate() {
                 {MODEL_OPTIONS.map(m => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
+                {modelStatus === 'supported' && (
+                  <Label color="blue" isCompact icon={<CheckCircleIcon />}>Supported</Label>
+                )}
                 {modelStatus === 'catalog' && (
                   <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
                 )}
                 {modelStatus === 'fetching' && (
-                  <Label color="blue" isCompact>Fetching...</Label>
+                  <Label color="grey" isCompact>Checking...</Label>
                 )}
                 {modelStatus === 'fetched' && (
-                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                  <Label color="gold" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
                 )}
                 {modelStatus === 'error' && (
                   <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>
@@ -273,7 +278,7 @@ export default function AdvancedEstimate() {
               </div>
             </div>
             <div className={styles.helperText}>
-              Popular models: Llama 3.1, Mistral, Qwen 2.5, Gemma 2 — type to autocomplete
+              Supported: {modelSuggestions()} — type to autocomplete
               {hfToken ? (
                 <span style={{ marginLeft: '8px', color: '#0066cc', fontWeight: 500 }}>🔑 HF token active</span>
               ) : (

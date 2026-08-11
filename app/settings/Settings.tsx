@@ -9,7 +9,7 @@ import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { fetchModelConfig } from '@/lib/huggingface/fetch-config';
 import styles from './Settings.module.css';
 
-type ModelStatus = 'idle' | 'catalog' | 'fetching' | 'fetched' | 'error';
+type ModelStatus = 'idle' | 'supported' | 'catalog' | 'fetching' | 'fetched' | 'error';
 
 const BACKENDS: { value: InferenceBackend; label: string; description: string }[] = [
   { value: 'vllm', label: 'vLLM', description: 'Open-source LLM inference engine; default for most deployments.' },
@@ -53,6 +53,7 @@ export function Settings() {
     if (catalogLoading) { setModelStatus('idle'); return; }
     if (!localModel || !localModel.includes('/')) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
+      if (getAppConfig().supportedModels.includes(localModel)) { setModelStatus('supported'); return; }
       const inCatalog = modelOptions.includes(localModel);
       if (inCatalog) { setModelStatus('catalog'); return; }
       setModelStatus('fetching');
@@ -61,7 +62,7 @@ export function Settings() {
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [localModel, hfToken, modelOptions, catalogLoading]);
+  }, [localModel, hfToken, modelOptions, catalogLoading, hydrated]);
 
   const handleTokenChange = (v: string) => {
     setHfToken(v);
@@ -128,14 +129,17 @@ export function Settings() {
                 {modelOptions.map(m => <option key={m} value={m} />)}
               </datalist>
               <div className={styles.autoChipWrapper}>
+                {modelStatus === 'supported' && (
+                  <Label color="blue" isCompact icon={<CheckCircleIcon />}>Supported</Label>
+                )}
                 {modelStatus === 'catalog' && (
                   <Label color="green" isCompact icon={<CheckCircleIcon />}>In catalog</Label>
                 )}
                 {modelStatus === 'fetching' && (
-                  <Label color="blue" isCompact>Checking…</Label>
+                  <Label color="grey" isCompact>Checking…</Label>
                 )}
                 {modelStatus === 'fetched' && (
-                  <Label color="cyan" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
+                  <Label color="gold" isCompact icon={<CheckCircleIcon />}>From HuggingFace</Label>
                 )}
                 {modelStatus === 'error' && (
                   <Label color="red" isCompact icon={<ExclamationTriangleIcon />}>Not found</Label>

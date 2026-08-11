@@ -2,6 +2,8 @@ export interface AppConfig {
   defaultModel: string;
   defaultBackend: string;
   backendVersions: Record<string, string>;
+  supportedModels: string[];
+  suggestedModelNames: string[];
 }
 
 // Hardcoded fallback — used if /config.json fails to load
@@ -13,6 +15,8 @@ const FALLBACK: AppConfig = {
     'tensorrt-llm': '11.2',
     'sglang': '0.5.17',
   },
+  supportedModels: [],
+  suggestedModelNames: [],
 };
 
 let cached: AppConfig | null = null;
@@ -27,6 +31,8 @@ export async function loadAppConfig(): Promise<AppConfig> {
       defaultModel: data.defaultModel ?? FALLBACK.defaultModel,
       defaultBackend: data.defaultBackend ?? FALLBACK.defaultBackend,
       backendVersions: data.backendVersions ?? FALLBACK.backendVersions,
+      supportedModels: data.supportedModels ?? FALLBACK.supportedModels,
+      suggestedModelNames: data.suggestedModelNames ?? FALLBACK.suggestedModelNames,
     };
   } catch {
     cached = FALLBACK;
