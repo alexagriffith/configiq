@@ -1,7 +1,7 @@
 'use client';
 
 import { PageSection } from '@patternfly/react-core';
-import QuickEstimate from './QuickEstimate';
+import PerformanceEstimate from './PerformanceEstimate';
 
 export default function Page() {
   return (
@@ -15,7 +15,7 @@ export default function Page() {
         paddingRight: 0
       }}
     >
-      <QuickEstimate />
+      <PerformanceEstimate />
     </PageSection>
   );
 }

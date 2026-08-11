@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Popover, Button } from '@patternfly/react-core';
 import OutlinedQuestionCircleIcon from '@patternfly/react-icons/dist/esm/icons/outlined-question-circle-icon';
-import styles from './QuickEstimate.module.css';
+import styles from './PerformanceEstimate.module.css';
 
 /* ----------------------------------------------------------------------------
    Term — a "?" popover for jargon. Plain-language explanations so business

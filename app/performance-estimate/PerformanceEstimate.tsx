@@ -23,7 +23,7 @@ import EyeSlashIcon from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon'
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import TimesIcon from '@patternfly/react-icons/dist/esm/icons/times-icon';
 
-import styles from './QuickEstimate.module.css';
+import styles from './PerformanceEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
 import { ProductTour, type TourStep } from '@/components/ProductTour';
 import { SaveEstimateModal } from './SaveEstimateModal';
@@ -1106,11 +1106,19 @@ export default function QuickEstimate() {
                 ? '🔒 Authentication Required'
                 : testError.includes('404') || testError.includes('not found')
                 ? '❌ Model Not Found'
+                : testError.toLowerCase().includes('moe')
+                ? '🔀 MoE model requires expert parallelism config'
                 : '⚠️ Failed to Load Model'}
             </div>
             <div style={{ fontSize: '14px', color: '#664d03', lineHeight: '1.6', marginBottom: '12px' }}>
               {testError}
             </div>
+
+            {testError.toLowerCase().includes('moe') && (
+              <div style={{ fontSize: '13px', color: '#664d03', background: '#fff', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107', marginBottom: '12px' }}>
+                <strong>This is a Mixture-of-Experts (MoE) model.</strong> Add your HuggingFace token above so the model config can be loaded — expert parallelism will then be configured automatically.
+              </div>
+            )}
 
             {(testError.includes('401') || testError.includes('Authentication required')) && (
               <div style={{ fontSize: '13px', color: '#664d03', background: '#fff', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107', marginBottom: '12px' }}>

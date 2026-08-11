@@ -8,6 +8,15 @@ const nextConfig = {
     "@patternfly/react-icons",
     "@patternfly/react-table",
   ],
+  async redirects() {
+    return [
+      {
+        source: '/quick-estimate',
+        destination: '/performance-estimate',
+        permanent: true,
+      },
+    ]
+  },
 };
 
 module.exports = nextConfig;

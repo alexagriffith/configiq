@@ -233,11 +233,11 @@ export default function ComparePage() {
             No saved estimates yet
           </Title>
           <Text style={{ marginBottom: '32px', color: '#6a6e73', fontSize: '15px' }}>
-            Run a Quick Estimate and click &ldquo;Save estimate&rdquo; to compare configurations here.
+            Run a Performance estimate and click &ldquo;Save estimate&rdquo; to compare configurations here.
           </Text>
-          <Link href="/quick-estimate">
+          <Link href="/performance-estimate">
             <Button variant="primary" size="lg">
-              → Go to Quick Estimate
+              → Go to Performance estimate
             </Button>
           </Link>
         </div>
@@ -249,7 +249,7 @@ export default function ComparePage() {
     <>
       <div style={{ padding: '20px 24px 0' }}>
         <h1 className={styles.pageTitle}>Compare saved results</h1>
-        <p className={styles.subtitle}>Compare workloads side by side. Save from Quick Estimate.</p>
+        <p className={styles.subtitle}>Compare workloads side by side. Save from Performance estimate.</p>
       </div>
 
       <PageSection>
@@ -262,7 +262,7 @@ export default function ComparePage() {
             <Button variant="secondary" size="sm">Export to Sheets</Button>
             <Button variant="danger" size="sm" onClick={handleClearAll}>Clear all</Button>
           </div>
-          <Link href="/quick-estimate">
+          <Link href="/performance-estimate">
             <Button variant="primary">+ Add estimate</Button>
           </Link>
         </div>

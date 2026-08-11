@@ -26,7 +26,7 @@ const tools = [
     title: "Performance estimate",
     description:
       "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
-    href: "/quick-estimate",
+    href: "/performance-estimate",
     icon: <BoltIcon />,
   },
   {
@@ -44,9 +44,9 @@ const tools = [
     icon: <CalculatorIcon />,
   },
   {
-    title: "GPU Explorer",
+    title: "GPU explorer",
     description:
-      "Compare GPUs across memory, throughput, cost, and availability tiers.",
+      "Compare GPUs across memory, throughput, and architecture generation.",
     href: "/gpu-explorer",
     icon: <ChartBarIcon />,
   },
@@ -58,7 +58,7 @@ const tools = [
     icon: <MigrationIcon />,
   },
   {
-    title: "Routing Economics",
+    title: "Routing economics",
     description:
       "Analyze request routing between model tiers to optimize cost vs quality tradeoffs.",
     href: "/routing",

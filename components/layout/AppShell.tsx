@@ -147,8 +147,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavItemWithIcon
               icon={BoltIcon}
               label="Performance estimate"
-              href="/quick-estimate"
-              isActive={pathname === "/quick-estimate"}
+              href="/performance-estimate"
+              isActive={pathname === "/performance-estimate"}
             />
             <NavItemWithIcon
               icon={CalculatorIcon}
@@ -168,20 +168,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href="/gpu-explorer"
               isActive={pathname === "/gpu-explorer"}
             />
-            <NavItemWithIcon
+            {false && <NavItemWithIcon
               icon={ListIcon}
               label="Compare"
               href="/compare"
               isActive={pathname === "/compare"}
-            />
-            <NavItemWithIcon
+            />}
+            {false && <NavItemWithIcon
               icon={HistoryIcon}
               label="History"
               href="#"
               isActive={false}
-            />
+            />}
 
-            <div style={groupLabelStyle}>OPTIMIZE</div>
+            <div style={groupLabelStyle}>COSTINGS</div>
 
             <NavItemWithIcon
               icon={DollarSignIcon}
@@ -197,7 +197,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
             <NavItemWithIcon
               icon={RouteIcon}
-              label="Routing"
+              label="Routing economics"
               href="/routing"
               isActive={pathname === "/routing"}
             />

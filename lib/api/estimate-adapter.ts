@@ -22,6 +22,14 @@ export interface EstimateAdapterInput {
   tp_size: number
   backend?: string
   hf_model_config?: Record<string, unknown> | null
+  moe_ep_size?: number
+  moe_tp_size?: number
+}
+
+function isMoeConfig(config: Record<string, unknown> | null | undefined): boolean {
+  if (!config) return false
+  const experts = config.num_experts ?? config.num_local_experts
+  return typeof experts === 'number' && experts > 1
 }
 
 function gpuVramGb(systemId: string): number {
@@ -66,6 +74,16 @@ export async function fetchEstimateAsInferenceResult(
 
   if (input.hf_model_config) {
     body.model_config = input.hf_model_config
+  }
+
+  // MoE models require at least one of moe_ep_size / moe_tp_size.
+  // Prefer explicit values; fall back to auto-detecting from hf_model_config.
+  if (input.moe_ep_size != null) {
+    body.moe_ep_size = input.moe_ep_size
+  } else if (input.moe_tp_size != null) {
+    body.moe_tp_size = input.moe_tp_size
+  } else if (isMoeConfig(input.hf_model_config)) {
+    body.moe_ep_size = input.tp_size
   }
 
   const res = await fetch('/api/estimate?include=config,memory', {
