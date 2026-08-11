@@ -14,8 +14,6 @@ export interface SavedEstimate {
     isl: number;
     osl: number;
     concurrentUsers: number;
-    workloadType: string;
-    slaPriority: string;
     weightPrecision: string;
     kvCachePrecision: string;
   };

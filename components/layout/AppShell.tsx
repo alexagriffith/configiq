@@ -18,14 +18,13 @@ import {
   HomeIcon,
   BoltIcon,
   CalculatorIcon,
-  MicrochipIcon,
-  SearchIcon,
-  ListIcon,
+  SlidersHIcon,
+  CubesIcon,
   HistoryIcon,
-  CoinsIcon,
-  ServerGroupIcon,
+  DollarSignIcon,
   RouteIcon,
   CogIcon,
+  ListIcon,
 } from "@patternfly/react-icons";
 import { getVersionString, getBuildTimeString, getShortCommit } from "@/lib/version";
 
@@ -147,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavItemWithIcon
               icon={BoltIcon}
-              label="Quick estimate"
+              label="Performance estimate"
               href="/quick-estimate"
               isActive={pathname === "/quick-estimate"}
             />
@@ -158,13 +157,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isActive={pathname === "/kv-cache"}
             />
             <NavItemWithIcon
-              icon={MicrochipIcon}
+              icon={SlidersHIcon}
               label="Advanced sizing"
               href="/calculator"
               isActive={pathname === "/calculator"}
             />
             <NavItemWithIcon
-              icon={SearchIcon}
+              icon={CubesIcon}
               label="GPU explorer"
               href="/gpu-explorer"
               isActive={pathname === "/gpu-explorer"}
@@ -185,20 +184,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div style={groupLabelStyle}>OPTIMIZE</div>
 
             <NavItemWithIcon
-              icon={CoinsIcon}
+              icon={DollarSignIcon}
               label="Hybrid savings"
               href="/hybrid-savings"
               isActive={pathname === "/hybrid-savings"}
             />
             <NavItemWithIcon
-              icon={ServerGroupIcon}
+              icon={CubesIcon}
               label="Cluster cost"
               href="/cluster-cost"
               isActive={pathname === "/cluster-cost"}
             />
             <NavItemWithIcon
               icon={RouteIcon}
-              label="Routing economics"
+              label="Routing"
               href="/routing"
               isActive={pathname === "/routing"}
             />

@@ -12,23 +12,29 @@ import {
   Button,
 } from "@patternfly/react-core";
 import {
-  BoltIcon,
+  MigrationIcon,
+  ChartBarIcon,
+  SlidersHIcon,
   CalculatorIcon,
-  MicrochipIcon,
-  SearchIcon,
-  CoinsIcon,
-  ServerGroupIcon,
   RouteIcon,
+  BoltIcon,
 } from "@patternfly/react-icons";
 import Link from "next/link";
 
 const tools = [
   {
-    title: "Quick estimate",
+    title: "Performance estimate",
     description:
-      "Fast GPU sizing from a model name and workload profile. Results in seconds.",
+      "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
     href: "/quick-estimate",
     icon: <BoltIcon />,
+  },
+  {
+    title: "Advanced sizing",
+    description:
+      "Find the optimal GPU configuration for a workload target using the AIConfigurator engine.",
+    href: "/calculator",
+    icon: <SlidersHIcon />,
   },
   {
     title: "KV cache calculator",
@@ -38,35 +44,21 @@ const tools = [
     icon: <CalculatorIcon />,
   },
   {
-    title: "Advanced sizing",
+    title: "GPU Explorer",
     description:
-      "Detailed GPU sizing with parallelism, quantization, KV cache, and cost modeling.",
-    href: "/calculator",
-    icon: <MicrochipIcon />,
-  },
-  {
-    title: "GPU explorer",
-    description:
-      "Search and compare GPUs across memory, throughput, cost, and availability.",
+      "Compare GPUs across memory, throughput, cost, and availability tiers.",
     href: "/gpu-explorer",
-    icon: <SearchIcon />,
+    icon: <ChartBarIcon />,
   },
   {
-    title: "Hybrid savings",
+    title: "Hybrid Savings",
     description:
       "Model cost savings between cloud, on-premise, and hybrid GPU deployment strategies.",
     href: "/hybrid-savings",
-    icon: <CoinsIcon />,
+    icon: <MigrationIcon />,
   },
   {
-    title: "Cluster cost",
-    description:
-      "Estimate total cost of ownership for multi-GPU inference clusters.",
-    href: "/cluster-cost",
-    icon: <ServerGroupIcon />,
-  },
-  {
-    title: "Routing economics",
+    title: "Routing Economics",
     description:
       "Analyze request routing between model tiers to optimize cost vs quality tradeoffs.",
     href: "/routing",
@@ -95,20 +87,19 @@ export default function HomePage() {
       </PageSection>
 
       <PageSection>
-        <Grid hasGutter sm={12} md={6} lg={4}>
+        <Grid hasGutter md={6} xl={4}>
           {tools.map((tool) => (
             <GridItem key={tool.href}>
-              <Card isFullHeight>
+              <Card isFullHeight isClickable>
                 <CardTitle>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {tool.icon}
-                    {tool.title}
-                  </span>
+                  <span style={{ marginRight: "0.5rem" }}>{tool.icon}</span>
+                  {tool.title}
                 </CardTitle>
                 <CardBody>
-                  <Text component="p" style={{ marginBottom: 16 }}>
-                    {tool.description}
-                  </Text>
+                  <TextContent>
+                    <Text component="p">{tool.description}</Text>
+                  </TextContent>
+                  <br />
                   <Button
                     variant="link"
                     isInline
