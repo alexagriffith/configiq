@@ -12,7 +12,17 @@ const nextConfig = {
     return [
       {
         source: '/quick-estimate',
-        destination: '/performance-estimate',
+        destination: '/performance',
+        permanent: true,
+      },
+      {
+        source: '/performance-estimate',
+        destination: '/performance',
+        permanent: true,
+      },
+      {
+        source: '/calculator',
+        destination: '/recommend',
         permanent: true,
       },
     ]

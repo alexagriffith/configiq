@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Alert, Label, Spinner } from '@patternfly/react-core'
 import CheckCircleIcon from '@patternfly/react-icons/dist/esm/icons/check-circle-icon'
 import { formatBytes } from '@/lib/utils/format'
-import { useCountUp } from '@/app/performance-estimate/quickEstimateHelpers'
+import { useCountUp } from '@/app/performance/quickEstimateHelpers'
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog'
 import { useSettings, type InferenceBackend } from '@/contexts/SettingsContext'
 import { getAppConfig } from '@/lib/app-config'
@@ -327,7 +327,7 @@ export default function KvCacheCalc() {
             <p>{error}</p>
             <p style={{ marginTop: 8 }}>
               You can also try using our{' '}
-              <a href="/performance-estimate" className={styles.errorLink}>
+              <a href="/performance" className={styles.errorLink}>
                 Performance estimate
               </a>{' '}
               for an approximate KV cache calculation.

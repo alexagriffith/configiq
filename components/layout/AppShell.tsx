@@ -161,8 +161,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavItemWithIcon
               icon={SlidersHIcon}
               label="Recommend sizing"
-              href="/calculator"
-              isActive={pathname === "/calculator"}
+              href="/recommend"
+              isActive={pathname === "/recommend"}
             />
             <NavItemWithIcon
               icon={CalculatorIcon}
@@ -171,16 +171,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isActive={pathname === "/kv-cache"}
             />
             <NavItemWithIcon
+              icon={BoltIcon}
+              label="Performance"
+              href="/performance"
+              isActive={pathname === "/performance"}
+            />
+            <NavItemWithIcon
               icon={CubesIcon}
               label="GPU explorer"
               href="/gpu-explorer"
               isActive={pathname === "/gpu-explorer"}
-            />
-            <NavItemWithIcon
-              icon={BoltIcon}
-              label="Performance"
-              href="/performance-estimate"
-              isActive={pathname === "/performance-estimate"}
             />
             {false && <NavItemWithIcon
               icon={ListIcon}
