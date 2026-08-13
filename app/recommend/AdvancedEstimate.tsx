@@ -170,7 +170,7 @@ export default function AdvancedEstimate() {
 
   const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
   const invalidOSL = oslInput === '' || parseInt(oslInput, 10) < 1;
-  const invalidTTFT = ttftInput === '' || parseInt(ttftInput, 10) < 1;
+  const invalidTTFT = ttftInput === '' || !Number.isFinite(Number(ttftInput)) || Number(ttftInput) <= 0;
 
   const handleIslChange = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -187,10 +187,10 @@ export default function AdvancedEstimate() {
   };
 
   const handleTtftChange = (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, '');
-    setTtftInput(digits);
-    const n = parseInt(digits, 10);
-    if (!isNaN(n) && n >= 1) setTtft(n);
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    setTtftInput(cleaned);
+    const n = Number(cleaned);
+    if (Number.isFinite(n) && n > 0) setTtft(n);
   };
 
 
@@ -313,7 +313,6 @@ export default function AdvancedEstimate() {
                   className={invalidISL ? styles.paramInputInvalid : styles.paramInput}
                   value={islInput}
                   onChange={e => handleIslChange(e.target.value)}
-                  // onChange={e => setIsl(Math.max(1, parseInt(e.target.value) || 1))}
                   min={1}
                 />
               </div>
@@ -324,7 +323,6 @@ export default function AdvancedEstimate() {
                   className={invalidOSL ? styles.paramInputInvalid : styles.paramInput}
                   value={oslInput}
                   onChange={e => handleOslChange(e.target.value)}
-                  // onChange={e => setOsl(Math.max(1, parseInt(e.target.value) || 1))}
                   min={1}
                 />
               </div>

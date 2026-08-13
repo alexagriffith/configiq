@@ -73,7 +73,7 @@ export default function KvCacheCalc() {
   const invalidMaxBatchSize = maxBatchSizeInput === '' || parseInt(maxBatchSizeInput, 10) < 1;
   const invalidTpSize = tpSizeInput === '' || parseInt(tpSizeInput, 10) < 1;
   const invalidPpSize = ppSizeInput === '' || parseInt(ppSizeInput, 10) < 1;
-  const invalidMemFractionValue = memFractionValueInput === '' || parseFloat(memFractionValueInput) < 0 || parseFloat(memFractionValueInput) > 1;
+  const invalidMemFractionValue = memFractionValueInput === '' || !Number.isFinite(Number(memFractionValueInput)) || Number(memFractionValueInput) < 0 || Number(memFractionValueInput) > 1;
 
   const handleMaxNumTokensChange = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -104,10 +104,10 @@ export default function KvCacheCalc() {
   };
 
   const handleMemFractionValueChange = (raw: string) => {
-    const digits = raw.replace(/[^0-9.]/g, '');
-    setMemFractionValueInput(digits);
-    const n = parseFloat(digits);
-    if (!isNaN(n) && n >= 0 && n <= 1) setMemFractionValue(n);
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    setMemFractionValueInput(cleaned);
+    const n = Number(cleaned);
+    if (Number.isFinite(n) && n >= 0 && n <= 1) setMemFractionValue(n);
   };
 
   const catalogMatch = MODEL_OPTIONS.includes(model)
