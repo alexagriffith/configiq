@@ -14,6 +14,17 @@ interface GpuSystemInputProps {
 export function GpuSystemInput({ id, value, onChange, gpuOptions }: GpuSystemInputProps) {
   const current = gpuOptions.find(g => g.systemId === value)
 
+  const vendorGroups = React.useMemo(() => {
+    const groups = new Map<string, GpuOption[]>()
+    for (const g of gpuOptions) {
+      const key = g.vendor ?? 'other'
+      const list = groups.get(key)
+      if (list) list.push(g)
+      else groups.set(key, [g])
+    }
+    return groups
+  }, [gpuOptions])
+
   return (
     <div className={styles.wrapper}>
       <label htmlFor={id} className={styles.label}>GPU system</label>
@@ -25,10 +36,14 @@ export function GpuSystemInput({ id, value, onChange, gpuOptions }: GpuSystemInp
       >
         {gpuOptions.length === 0
           ? <option value={value} disabled>Loading GPU catalog…</option>
-          : gpuOptions.map(g => (
-              <option key={g.systemId} value={g.systemId}>
-                {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
-              </option>
+          : [...vendorGroups.entries()].map(([vendor, gpus]) => (
+              <optgroup key={vendor} label={vendor.toUpperCase()}>
+                {gpus.map(g => (
+                  <option key={g.systemId} value={g.systemId}>
+                    {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                  </option>
+                ))}
+              </optgroup>
             ))
         }
       </select>
