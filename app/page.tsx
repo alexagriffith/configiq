@@ -26,7 +26,7 @@ const tools = [
     title: "Recommend sizing",
     description:
       "Find the optimal GPU configuration for a workload target using the AIConfigurator engine.",
-    href: "/calculator",
+    href: "/recommend",
     icon: <SlidersHIcon />,
   },
   {
@@ -47,7 +47,7 @@ const tools = [
     title: "Performance",
     description:
       "Estimate TTFT, TPOT, and throughput for your model and parallelism configuration.",
-    href: "/performance-estimate",
+    href: "/performance",
     icon: <BoltIcon />,
   },
   // Hidden pending aicostings API

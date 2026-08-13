@@ -222,6 +222,22 @@
   color: var(--t);
   background: #ffffff;
 }
+.paramInputInvalid {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #b8bbbe;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--t);
+  background: #ffffff;
+  border-color: #c9190b;
+  box-shadow: 0 0 0 1px #c9190b;
+}
+
+
 .numberInput:focus { border-color: var(--blue); outline: none; }
 
 /* ---------- result tiles ---------- */

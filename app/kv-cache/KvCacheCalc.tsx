@@ -63,6 +63,53 @@ export default function KvCacheCalc() {
   const [debugStatus, setDebugStatus] = React.useState<number | null>(null)
   const [debugDuration, setDebugDuration] = React.useState<number | null>(null)
 
+  const [maxNumTokensInput, setMaxNumTokensInput] = React.useState('8192')
+  const [maxBatchSizeInput, setMaxBatchSizeInput] = React.useState('128')
+  const [tpSizeInput, setTpSizeInput] = React.useState('1')
+  const [ppSizeInput, setPpSizeInput] = React.useState('1')
+  const [memFractionValueInput, setMemFractionValueInput] = React.useState('1.0')
+
+  const invalidMaxNumTokens = maxNumTokensInput === '' || parseInt(maxNumTokensInput, 10) < 1;
+  const invalidMaxBatchSize = maxBatchSizeInput === '' || parseInt(maxBatchSizeInput, 10) < 1;
+  const invalidTpSize = tpSizeInput === '' || parseInt(tpSizeInput, 10) < 1;
+  const invalidPpSize = ppSizeInput === '' || parseInt(ppSizeInput, 10) < 1;
+  const invalidMemFractionValue = memFractionValueInput === '' || parseFloat(memFractionValueInput) < 0 || parseFloat(memFractionValueInput) > 1;
+
+  const handleMaxNumTokensChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setMaxNumTokensInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setMaxNumTokens(n);
+  };
+  
+  const handleMaxBatchSizeChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setMaxBatchSizeInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setMaxBatchSize(n);
+  };
+
+  const handleTpSizeChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setTpSizeInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTpSize(n);
+  };
+
+  const handlePpSizeChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setPpSizeInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setPpSize(n);
+  };
+
+  const handleMemFractionValueChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9.]/g, '');
+    setMemFractionValueInput(digits);
+    const n = parseFloat(digits);
+    if (!isNaN(n) && n >= 0 && n <= 1) setMemFractionValue(n);
+  };
+
   const catalogMatch = MODEL_OPTIONS.includes(model)
   const kvModelStatus: ModelStatus = getAppConfig().supportedModels.includes(model)
     ? 'supported'
@@ -164,8 +211,8 @@ export default function KvCacheCalc() {
           <button
             type="button"
             className={styles.calcBtn}
-            onClick={handleCalculate}
-            disabled={loading || !model.trim()}
+            onClick={handleCalculate} 
+            disabled={loading || !model.trim() || invalidMaxNumTokens || invalidMaxBatchSize || invalidTpSize || invalidPpSize || invalidMemFractionValue}
           >
             {loading ? 'Calculating…' : 'Calculate'}
           </button>
@@ -219,10 +266,10 @@ export default function KvCacheCalc() {
                 <input
                   type="number"
                   id="kv-tokens"
-                  value={maxNumTokens}
-                  onChange={e => setMaxNumTokens(parseInt(e.target.value, 10) || 0)}
+                  value={maxNumTokensInput}
+                  onChange={e => handleMaxNumTokensChange(e.target.value)}
                   min={1}
-                  className={styles.numberInput}
+                  className={invalidMaxNumTokens ? styles.paramInputInvalid : styles.numberInput}
                 />
               </div>
               <div className={styles.field}>
@@ -230,10 +277,10 @@ export default function KvCacheCalc() {
                 <input
                   type="number"
                   id="kv-batch"
-                  value={maxBatchSize}
-                  onChange={e => setMaxBatchSize(parseInt(e.target.value, 10) || 0)}
+                  value={maxBatchSizeInput}
+                  onChange={e => handleMaxBatchSizeChange(e.target.value)}
                   min={1}
-                  className={styles.numberInput}
+                  className={invalidMaxBatchSize ? styles.paramInputInvalid : styles.numberInput}
                 />
               </div>
             </div>
@@ -246,10 +293,10 @@ export default function KvCacheCalc() {
                 <input
                   type="number"
                   id="kv-tp"
-                  value={tpSize}
-                  onChange={e => setTpSize(parseInt(e.target.value, 10) || 1)}
+                  value={tpSizeInput}
+                  onChange={e => handleTpSizeChange(e.target.value)}
                   min={1}
-                  className={styles.numberInput}
+                  className={invalidTpSize ? styles.paramInputInvalid : styles.numberInput}
                 />
               </div>
               <div className={styles.field}>
@@ -257,10 +304,10 @@ export default function KvCacheCalc() {
                 <input
                   type="number"
                   id="kv-pp"
-                  value={ppSize}
-                  onChange={e => setPpSize(parseInt(e.target.value, 10) || 1)}
+                  value={ppSizeInput}
+                  onChange={e => handlePpSizeChange(e.target.value)}
                   min={1}
-                  className={styles.numberInput}
+                  className={invalidPpSize ? styles.paramInputInvalid : styles.numberInput}
                 />
               </div>
               <div className={styles.field}>
@@ -295,12 +342,12 @@ export default function KvCacheCalc() {
                 <input
                   type="number"
                   id="kv-mem-val"
-                  value={memFractionValue}
-                  onChange={e => setMemFractionValue(parseFloat(e.target.value) || 0)}
+                  value={memFractionValueInput}
+                  onChange={e => handleMemFractionValueChange(e.target.value)}
                   min={0}
                   max={1}
                   step={0.05}
-                  className={styles.numberInput}
+                  className={invalidMemFractionValue ? styles.paramInputInvalid : styles.numberInput}
                 />
               </div>
               <div className={styles.field}>

@@ -164,6 +164,35 @@ export default function AdvancedEstimate() {
   // Live pricing
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
 
+  const [islInput, setIslInput] = React.useState('2048');
+  const [oslInput, setOslInput] = React.useState('128');
+  const [ttftInput, setTtftInput] = React.useState('1000');
+
+  const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
+  const invalidOSL = oslInput === '' || parseInt(oslInput, 10) < 1;
+  const invalidTTFT = ttftInput === '' || parseInt(ttftInput, 10) < 1;
+
+  const handleIslChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setIslInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setIsl(n);
+  };
+
+  const handleOslChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setOslInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setOsl(n);
+  };
+
+  const handleTtftChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setTtftInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTtft(n);
+  };
+
 
   // Model status check + fetch HF config
   React.useEffect(() => {
@@ -258,7 +287,7 @@ export default function AdvancedEstimate() {
           <button
             className={styles.calcBtn}
             onClick={handleCalculate}
-            disabled={isLoading || !model.includes('/')}
+            disabled={isLoading || !model.includes('/') || invalidISL || invalidOSL || invalidTTFT}
           >
             {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
@@ -266,7 +295,7 @@ export default function AdvancedEstimate() {
       </div>
 
       <InfoStrip>
-        Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(1)}s.
+        Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(3)}s.
         {' '}<InfoStripAction onClick={() => setExpanded(expanded.includes('customize') ? expanded.filter(e => e !== 'customize') : [...expanded, 'customize'])}>
           Adjust? (edit fields below)
         </InfoStripAction>
@@ -281,9 +310,10 @@ export default function AdvancedEstimate() {
                 <label className={styles.fieldLabel}>Avg input tokens (ISL)</label>
                 <input
                   type="number"
-                  className={styles.paramInput}
-                  value={isl}
-                  onChange={e => setIsl(Math.max(1, parseInt(e.target.value) || 1))}
+                  className={invalidISL ? styles.paramInputInvalid : styles.paramInput}
+                  value={islInput}
+                  onChange={e => handleIslChange(e.target.value)}
+                  // onChange={e => setIsl(Math.max(1, parseInt(e.target.value) || 1))}
                   min={1}
                 />
               </div>
@@ -291,22 +321,20 @@ export default function AdvancedEstimate() {
                 <label className={styles.fieldLabel}>Avg output tokens (OSL)</label>
                 <input
                   type="number"
-                  className={styles.paramInput}
-                  value={osl}
-                  onChange={e => setOsl(Math.max(1, parseInt(e.target.value) || 1))}
+                  className={invalidOSL ? styles.paramInputInvalid : styles.paramInput}
+                  value={oslInput}
+                  onChange={e => handleOslChange(e.target.value)}
+                  // onChange={e => setOsl(Math.max(1, parseInt(e.target.value) || 1))}
                   min={1}
                 />
               </div>
               <div>
-                <label className={styles.fieldLabel}>Max TTFT (seconds)</label>
+                <label className={styles.fieldLabel}>Max TTFT (ms)</label>
                 <input
                   type="number"
-                  className={styles.paramInput}
-                  value={ttft / 1000}
-                  onChange={e => {
-                    const sec = parseFloat(e.target.value);
-                    if (!isNaN(sec) && sec > 0) setTtft(Math.round(sec * 1000));
-                  }}
+                  className={invalidTTFT ? styles.paramInputInvalid : styles.paramInput}
+                  value={ttftInput}
+                  onChange={e => handleTtftChange(e.target.value)}
                   min={0.1}
                   step={0.1}
                 />

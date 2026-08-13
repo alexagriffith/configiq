@@ -20,7 +20,6 @@ import LayerGroupIcon from '@patternfly/react-icons/dist/esm/icons/layer-group-i
 import InfoCircleIcon from '@patternfly/react-icons/dist/esm/icons/info-circle-icon';
 import EyeIcon from '@patternfly/react-icons/dist/esm/icons/eye-icon';
 import EyeSlashIcon from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon';
-
 import styles from './PerformanceEstimate.module.css';
 import { Term, FlipTile, Sparkline, useCountUp } from './quickEstimateHelpers';
 import { ProductTour, type TourStep } from '@/components/ProductTour';
@@ -159,7 +158,45 @@ export default function QuickEstimate() {
   const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [elapsed, setElapsed] = React.useState(0);
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
-  const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');
+  const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');44
+  
+  const [islInput, setIslInput] = React.useState('2048');
+  const [oslInput, setOslInput] = React.useState('128');
+  const [concurrentUsersInput, setConcurrentUsersInput] = React.useState('32');
+  const [tpSizeInput, setTpSizeInput] = React.useState('1');
+
+  const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
+  const invalidOSL = oslInput === '' || parseInt(oslInput, 10) < 1;
+  const invalidUsers = concurrentUsersInput === '' || parseInt(concurrentUsersInput, 10) < 1;
+  const invalidTpSize = tpSizeInput === '' || parseInt(tpSizeInput, 10) < 1;
+
+  const handleIslChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setIslInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTestISL(n);
+  };
+
+  const handleOslChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setOslInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTestOSL(n);
+  };
+
+  const handleConcurrentUsersChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setConcurrentUsersInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTestConcurrentUsers(n);
+  };
+
+  const handleTpSizeChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setTpSizeInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTestTpSize(n);
+  };
 
   // Live pricing from Cloudflare Worker
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
@@ -650,24 +687,27 @@ export default function QuickEstimate() {
       fields: [
         {
           label: 'Input sequence length (ISL)',
-          value: testISL,
+          value: islInput,
           term: 'isl',
           type: 'number' as const,
-          onChange: (val: string) => setTestISL(Math.max(1, parseInt(val) || 1))
+          invalid: invalidISL,
+          onChange: (val: string) => handleIslChange(val)
         },
         {
           label: 'Output sequence length (OSL)',
-          value: testOSL,
+          value: oslInput,
           term: 'osl',
           type: 'number' as const,
-          onChange: (val: string) => setTestOSL(Math.max(1, parseInt(val) || 1))
+          invalid: invalidOSL,
+          onChange: (val: string) => handleOslChange(val)
         },
         {
           label: 'Concurrent users',
-          value: testConcurrentUsers,
+          value: concurrentUsersInput,
           term: 'concurrent',
           type: 'number' as const,
-          onChange: (val: string) => setTestConcurrentUsers(Math.max(1, parseInt(val) || 1))
+          invalid: invalidUsers,
+          onChange: (val: string) => handleConcurrentUsersChange(val)
         },
       ],
     },
@@ -739,15 +779,16 @@ export default function QuickEstimate() {
       fields: [
         {
           label: 'Tensor parallel size',
-          value: `${testTpSize}`,
+          value: tpSizeInput,
           term: 'tensorParallel',
           readonly: false,
           type: 'number' as const,
-          onChange: (val: string) => setTestTpSize(parseInt(val) || 1),
+          invalid: invalidTpSize,
+          onChange: (val: string) => handleTpSizeChange(val),
         },
         {
           label: 'Total GPUs',
-          value: testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas}` : `${testTpSize}`,
+          value: testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas}` : `${tpSizeInput}`,
           readonly: true,
         },
       ],
@@ -890,13 +931,13 @@ export default function QuickEstimate() {
           <GpuSystemInput id="qe-gpu" value={gpu} onChange={setGpu} gpuOptions={aicGpus} />
 
         </div>
-
+        
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
           <Button
             variant="primary"
             size="lg"
             onClick={() => { setTestResult(null); setCalcTrigger(t => t + 1); }}
-            isDisabled={isCalculating || !gpu || !model || catalogLoading}
+            isDisabled={isCalculating || !gpu || !model || catalogLoading || invalidISL || invalidOSL || invalidUsers || invalidTpSize}
           >
             {isCalculating ? 'Calculating...' : 'Calculate'}
           </Button>
@@ -1570,6 +1611,7 @@ export default function QuickEstimate() {
                             value={String(f.value)}
                             aria-label={f.label}
                             type="number"
+                            validated={f.invalid ? 'error' : 'default'}
                             onChange={(_, val) => f.onChange?.(val)}
                           />
                         ) : (
