@@ -38,6 +38,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const masthead = (
     <Masthead style={{ backgroundColor: "#1a1a1a", borderBottom: "1px solid #2d2d2d" }}>
+      <MastheadToggle>
+        <PageToggleButton variant="plain" aria-label="Navigation" id="nav-toggle">
+          <BarsIcon color="white" />
+        </PageToggleButton>
+      </MastheadToggle>
       <MastheadMain>
         <MastheadBrand>
           <Link
@@ -78,11 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <GithubIcon style={{ width: 21, height: 21 }} />
         </a>
       </MastheadContent>
-      <MastheadToggle>
-        <PageToggleButton variant="plain" aria-label="Navigation" id="nav-toggle">
-          <BarsIcon color="white" />
-        </PageToggleButton>
-      </MastheadToggle>
     </Masthead>
   );
 
