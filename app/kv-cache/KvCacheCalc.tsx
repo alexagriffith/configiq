@@ -23,7 +23,7 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 }
 
 export default function KvCacheCalc() {
-  const { hydrated, defaultModel: settingsDefaultModel, inferenceBackend, backendVersion: settingsBackendVersion } = useSettings()
+  const { hydrated, hfToken, defaultModel: settingsDefaultModel, inferenceBackend, backendVersion: settingsBackendVersion } = useSettings()
   const { modelOptions: aicModels, gpuOptions: aicGpus, isLoading: catalogLoading } = useAicCatalog()
   const MODEL_OPTIONS = aicModels
 
@@ -195,7 +195,6 @@ export default function KvCacheCalc() {
       <div className={styles.inputCard}>
         <div className={styles.inputRow}>
           <div className={styles.field}>
-            <label className={styles.fieldLabel} htmlFor="kv-model">Model — Hugging Face ID</label>
             <ComboBox
               id="kv-model"
               value={model}
@@ -203,6 +202,8 @@ export default function KvCacheCalc() {
               items={modelItems}
               placeholder="Type model name or select from dropdown..."
               allowCustom
+              supportedModels={getAppConfig().supportedModels}
+              hfToken={hfToken}
             />
           </div>
 

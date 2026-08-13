@@ -910,7 +910,6 @@ export default function QuickEstimate() {
         <div className={styles.inputRow}>
           {/* Column 1: Model field */}
           <div>
-            <label className={styles.fieldLabel} htmlFor="qe-model">Model — Hugging Face ID</label>
             <ComboBox
               id="qe-model"
               value={model}
@@ -918,6 +917,8 @@ export default function QuickEstimate() {
               items={modelItems}
               placeholder="Type model name or select from dropdown..."
               allowCustom
+              supportedModels={getAppConfig().supportedModels}
+              hfToken={hfToken}
             />
           </div>
 

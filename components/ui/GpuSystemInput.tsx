@@ -40,7 +40,10 @@ export function GpuSystemInput({ id, value, onChange, gpuOptions }: GpuSystemInp
               <optgroup key={vendor} label={vendor.toUpperCase()}>
                 {gpus.map(g => (
                   <option key={g.systemId} value={g.systemId}>
-                    {g.label}{g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                    {g.label}
+                    {g.vramGb ? ` — ${g.vramGb} GB` : ''}
+                    {g.bandwidthTbps != null ? ` · ${g.bandwidthTbps} TB/s` : ''}
+                    {g.tflopsBf16 != null ? ` · ${g.tflopsBf16.toFixed(0)} TFLOPS` : ''}
                   </option>
                 ))}
               </optgroup>

@@ -253,7 +253,6 @@ export default function AdvancedEstimate() {
         {/* Model + GPU row */}
         <div className={styles.inputGrid}>
           <div>
-            <label className={styles.fieldLabel} htmlFor="adv-model">Model — Hugging Face ID</label>
             <ComboBox
               id="adv-model"
               value={model}
@@ -261,6 +260,8 @@ export default function AdvancedEstimate() {
               items={modelItems}
               placeholder="e.g. meta-llama/Llama-3.1-70B-Instruct"
               allowCustom
+              supportedModels={getAppConfig().supportedModels}
+              hfToken={hfToken}
             />
           </div>
 
