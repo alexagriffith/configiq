@@ -1,6 +1,9 @@
 .wrapper {
-  position: relative;
   width: 100%;
+}
+
+.toggleAnchor {
+  position: relative;
 }
 
 .labelRow {

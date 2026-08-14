@@ -220,6 +220,7 @@ export function ComboBox({ value, onChange, items, placeholder, id, allowCustom 
           />
         )}
       </div>
+      <div className={styles.toggleAnchor}>
       <div className={`${styles.toggle} ${open ? styles.toggleOpen : ''}`}>
         <input
           ref={inputRef}
@@ -324,6 +325,7 @@ export function ComboBox({ value, onChange, items, placeholder, id, allowCustom 
           )}
         </div>
       )}
+      </div>
 
       {supportedModels && (
         <div className={styles.helperText}>

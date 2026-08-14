@@ -729,22 +729,22 @@ export default function QuickEstimate() {
         },
       ],
     },
-    {
-      id: 'hardware', title: 'Hardware',
-      summary: [{ k: 'GPU', v: currentAicGpu ? gpuOptionLabel(currentAicGpu.label, currentAicGpu.vramGb) : gpu }],
-      fields: [
-        {
-          label: 'GPU type',
-          value: gpu,
-          type: 'select' as const,
-          options: aicGpus.map(g => gpuOptionLabel(g.label, g.vramGb)),
-          onChange: (val: string) => {
-            const match = aicGpus.find(g => gpuOptionLabel(g.label, g.vramGb) === val)
-            if (match) setGpu(match.systemId)
-          }
-        },
-      ],
-    },
+    // {
+    //   id: 'hardware', title: 'Hardware',
+    //   summary: [{ k: 'GPU', v: currentAicGpu ? gpuOptionLabel(currentAicGpu.label, currentAicGpu.vramGb) : gpu }],
+    //   fields: [
+    //     {
+    //       label: 'GPU type',
+    //       value: gpu,
+    //       type: 'select' as const,
+    //       options: aicGpus.map(g => gpuOptionLabel(g.label, g.vramGb)),
+    //       onChange: (val: string) => {
+    //         const match = aicGpus.find(g => gpuOptionLabel(g.label, g.vramGb) === val)
+    //         if (match) setGpu(match.systemId)
+    //       }
+    //     },
+    //   ],
+    // },
     {
       id: 'parallel',
       title: 'Parallelism',
