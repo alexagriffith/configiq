@@ -99,7 +99,7 @@ export function useAicCatalog(): AicCatalog {
     fetchPromise = null  // reset so stale cache triggers a fresh fetch
 
     let cancelled = false
-    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://www.aiconfigurator.dev'
+    const aicUrl = process.env.NEXT_PUBLIC_AICONFIGURATOR_API_URL || 'https://aiconfigurator.dev'
 
     async function fetchCatalog() {
       if (!fetchPromise) {
