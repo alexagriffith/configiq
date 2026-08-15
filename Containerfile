@@ -15,13 +15,13 @@ FROM node:20-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S configiq && adduser -S configiq -u 1001
 
-COPY --from=builder --chown=nodejs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nodejs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nodejs:nodejs /app/public ./public
+COPY --from=builder --chown=configiq:configiq /app/.next/standalone ./
+COPY --from=builder --chown=configiq:configiq /app/.next/static ./.next/static
+COPY --from=builder --chown=configiq:configiq /app/public ./public
 
-USER nodejs
+USER configiq
 
 EXPOSE 3000
 
