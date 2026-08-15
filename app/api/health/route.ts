@@ -21,10 +21,12 @@ export async function GET() {
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
     // Check if AIConfigurator API is reachable
+    const url = new URL(apiUrl);
     const apiResponse = await fetch(`${apiUrl}/systems`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'Host': url.hostname,
       },
       signal: controller.signal,
       cache: 'no-store',
