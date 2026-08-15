@@ -15,7 +15,7 @@ const ERROR_STATUS_MAP: Record<string, number> = {
 const DEFAULT_TIMEOUT_SECONDS = 90
 
 async function proxyToAic(body: Record<string, unknown>, include: string): Promise<NextResponse> {
-  const baseUrl = process.env.AICONFIGURATOR_API_URL
+  const baseUrl = process.env.AICONFIGURATOR_GATEWAY_URL
   const timeoutSeconds = parseInt(process.env.AICONFIGURATOR_TIMEOUT_SECONDS || '', 10) || DEFAULT_TIMEOUT_SECONDS
 
   if (!baseUrl) {
