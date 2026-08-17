@@ -125,7 +125,7 @@ export function Settings() {
           </div>
         </div>
 
-        {/* ── Validated models ── */}
+        {/* ── Tested models ── */}
         <div className={styles.section}>
           <div
             className={styles.sectionHead}
@@ -134,13 +134,13 @@ export function Settings() {
           >
             <div>
               <div className={styles.sectionTitle}>
-                Validated models
+                Tested models
                 <span style={{ fontSize: '11px', fontWeight: 400, marginLeft: '8px', color: '#6a6e73' }}>
                   {validatedOpen ? '▲' : '▼'}
                 </span>
               </div>
               <div className={styles.sectionDesc}>
-                Models validated for use with the AIConfigurator sizing engine.
+                Models tested for use with the AIConfigurator sizing engine.
               </div>
             </div>
             <Label color="blue" isCompact>{getAppConfig().supportedModels.length} models</Label>
@@ -169,7 +169,7 @@ export function Settings() {
                 <div style={{ marginTop: '12px', fontSize: '13px' }}>
                   Don&apos;t see your model?{' '}
                   <a href={getAppConfig().modelRequestUrl} target="_blank" rel="noopener" style={{ color: '#0066cc' }}>
-                    Request validation →
+                    Request testing →
                   </a>
                 </div>
               )}
