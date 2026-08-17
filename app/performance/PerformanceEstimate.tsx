@@ -208,7 +208,7 @@ export default function QuickEstimate() {
     setTestPrefix(isNaN(n) ? 0 : n);
   };
 
-  const applyPreset = (p: WorkloadPreset) => {
+  const applyPreset = (p: Pick<WorkloadPreset, 'isl' | 'osl' | 'concurrency' | 'prefix'>) => {
     setTestISL(p.isl); setIslInput(String(p.isl));
     setTestOSL(p.osl); setOslInput(String(p.osl));
     setTestConcurrentUsers(p.concurrency); setConcurrentUsersInput(String(p.concurrency));
@@ -943,16 +943,9 @@ export default function QuickEstimate() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
           {getAppConfig().workloadPresets.map(p => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => applyPreset(p)}
-              style={{ fontSize: '12px', padding: '3px 10px', border: '1px solid #c6c7c8', borderRadius: '4px', background: '#fff', color: '#151515', cursor: 'pointer', fontFamily: 'var(--font-sans, sans-serif)', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#f0f0f0')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
-            >
+            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}

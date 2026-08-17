@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Label, Accordion, AccordionItem, AccordionToggle, AccordionContent } from '@patternfly/react-core';
+import { Label, Button, Accordion, AccordionItem, AccordionToggle, AccordionContent } from '@patternfly/react-core';
 import MicrochipIcon from '@patternfly/react-icons/dist/esm/icons/microchip-icon';
 import MemoryIcon from '@patternfly/react-icons/dist/esm/icons/memory-icon';
 import ClockIcon from '@patternfly/react-icons/dist/esm/icons/clock-icon';
@@ -182,6 +182,7 @@ export default function AdvancedEstimate() {
   const invalidTTFT = ttftInput === '' || !Number.isFinite(Number(ttftInput)) || Number(ttftInput) <= 0;
   const invalidTpot = tpotInput === '' || !Number.isFinite(Number(tpotInput)) || Number(tpotInput) <= 0;
   const invalidConcurrency = concurrencyInput === '' || parseInt(concurrencyInput, 10) < 1;
+  const invalidLatency = latencyInput !== '' && (!Number.isFinite(Number(latencyInput)) || Number(latencyInput) <= 0);
 
   const handleIslChange = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -340,7 +341,7 @@ export default function AdvancedEstimate() {
           <button
             className={styles.calcBtn}
             onClick={handleCalculate}
-            disabled={isLoading || !model.includes('/') || invalidISL || invalidOSL || invalidTTFT || invalidTpot || invalidConcurrency}
+            disabled={isLoading || !model.includes('/') || invalidISL || invalidOSL || invalidTTFT || invalidTpot || invalidConcurrency || invalidLatency}
           >
             {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
@@ -351,16 +352,9 @@ export default function AdvancedEstimate() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
           {getAppConfig().workloadPresets.map(p => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => applyPreset(p)}
-              style={{ fontSize: '12px', padding: '3px 10px', border: '1px solid #c6c7c8', borderRadius: '4px', background: '#fff', color: '#151515', cursor: 'pointer', fontFamily: 'var(--font-sans, sans-serif)', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#f0f0f0')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
-            >
+            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -459,7 +453,7 @@ export default function AdvancedEstimate() {
                       <label className={styles.fieldLabel}>Max E2E latency (ms, optional)</label>
                       <input
                         type="number"
-                        className={styles.paramInput}
+                        className={invalidLatency ? styles.paramInputInvalid : styles.paramInput}
                         value={latencyInput}
                         onChange={e => handleLatencyChange(e.target.value)}
                         placeholder="Auto"
