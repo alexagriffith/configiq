@@ -15,7 +15,7 @@ WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN NEXT_PUBLIC_AICONFIGURATOR_API_URL=${NEXT_PUBLIC_AICONFIGURATOR_API_URL} npm run build
 
 FROM node:20-slim
 WORKDIR /app

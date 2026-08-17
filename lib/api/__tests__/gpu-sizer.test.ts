@@ -118,7 +118,7 @@ describe('GpuSizerRequestSchema', () => {
 
 describe('callGpuSizer', () => {
   beforeEach(() => {
-    vi.stubEnv('AICONFIGURATOR_API_URL', 'https://aiconfigurator.dev')
+    vi.stubEnv('AICONFIGURATOR_GATEWAY_URL', 'https://aiconfigurator.dev')
   })
 
   afterEach(() => {
@@ -180,7 +180,7 @@ describe('callGpuSizer', () => {
   })
 
   it('returns AIC_NOT_CONFIGURED when API URL is missing', async () => {
-    vi.stubEnv('AICONFIGURATOR_API_URL', '')
+    vi.stubEnv('AICONFIGURATOR_GATEWAY_URL', '')
 
     const result = await callGpuSizer(VALID_REQUEST)
 

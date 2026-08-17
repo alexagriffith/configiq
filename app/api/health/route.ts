@@ -3,14 +3,14 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const apiUrl = process.env.AICONFIGURATOR_API_URL;
+  const gatewayUrl = process.env.AICONFIGURATOR_GATEWAY_URL;
 
-  // Require explicit API URL configuration
-  if (!apiUrl) {
+  // Require explicit gateway URL configuration
+  if (!gatewayUrl) {
     return NextResponse.json(
       {
         status: 'unhealthy',
-        message: 'API configuration missing',
+        message: 'Gateway configuration missing',
       },
       { status: 200 }
     );
@@ -20,8 +20,8 @@ export async function GET() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
-    // Check if AIConfigurator API is reachable
-    const apiResponse = await fetch(`${apiUrl}/systems`, {
+    // Check if AIConfigurator API is reachable via gateway
+    const apiResponse = await fetch(`${gatewayUrl}/systems`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

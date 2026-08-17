@@ -169,7 +169,7 @@ export function Settings() {
                 <div style={{ marginTop: '12px', fontSize: '13px' }}>
                   Don&apos;t see your model?{' '}
                   <a href={getAppConfig().modelRequestUrl} target="_blank" rel="noopener" style={{ color: '#0066cc' }}>
-                    Request validation →
+                    Request testing →
                   </a>
                 </div>
               )}
