@@ -1,3 +1,5 @@
+import type { WorkloadPreset } from './workload-presets';
+
 export interface AppConfig {
   defaultModel: string;
   defaultSystem: string;
@@ -8,6 +10,7 @@ export interface AppConfig {
   supportedModels: string[];
   suggestedModelNames: string[];
   modelRequestUrl: string;
+  workloadPresets: WorkloadPreset[];
 }
 
 // Hardcoded fallback — used if /config.json fails to load
@@ -25,6 +28,7 @@ const FALLBACK: AppConfig = {
   supportedModels: [],
   suggestedModelNames: [],
   modelRequestUrl: '',
+  workloadPresets: [],
 };
 
 let cached: AppConfig | null = null;
@@ -45,6 +49,7 @@ export async function loadAppConfig(): Promise<AppConfig> {
       supportedModels: data.supportedModels ?? FALLBACK.supportedModels,
       suggestedModelNames: data.suggestedModelNames ?? FALLBACK.suggestedModelNames,
       modelRequestUrl: data.modelRequestUrl ?? FALLBACK.modelRequestUrl,
+      workloadPresets: data.workloadPresets ?? FALLBACK.workloadPresets,
     };
   } catch {
     cached = FALLBACK;

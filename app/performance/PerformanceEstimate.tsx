@@ -34,6 +34,7 @@ import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAppConfig } from '@/lib/app-config';
+import type { WorkloadPreset } from '@/lib/workload-presets';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
@@ -154,6 +155,7 @@ export default function QuickEstimate() {
   const [testConcurrentUsers, setTestConcurrentUsers] = React.useState(32);
   const [testISL, setTestISL] = React.useState(2048);
   const [testOSL, setTestOSL] = React.useState(128);
+  const [testPrefix, setTestPrefix] = React.useState(0);
   const [testTpSize, setTestTpSize] = React.useState(1);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [elapsed, setElapsed] = React.useState(0);
@@ -163,6 +165,7 @@ export default function QuickEstimate() {
   const [islInput, setIslInput] = React.useState('2048');
   const [oslInput, setOslInput] = React.useState('128');
   const [concurrentUsersInput, setConcurrentUsersInput] = React.useState('32');
+  const [prefixInput, setPrefixInput] = React.useState('0');
   const [tpSizeInput, setTpSizeInput] = React.useState('1');
 
   const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
@@ -196,6 +199,20 @@ export default function QuickEstimate() {
     setTpSizeInput(digits);
     const n = parseInt(digits, 10);
     if (!isNaN(n) && n >= 1) setTestTpSize(n);
+  };
+
+  const handlePrefixChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setPrefixInput(digits);
+    const n = parseInt(digits, 10);
+    setTestPrefix(isNaN(n) ? 0 : n);
+  };
+
+  const applyPreset = (p: WorkloadPreset) => {
+    setTestISL(p.isl); setIslInput(String(p.isl));
+    setTestOSL(p.osl); setOslInput(String(p.osl));
+    setTestConcurrentUsers(p.concurrency); setConcurrentUsersInput(String(p.concurrency));
+    setTestPrefix(p.prefix); setPrefixInput(String(p.prefix));
   };
 
   // Live pricing from Cloudflare Worker
@@ -268,6 +285,7 @@ export default function QuickEstimate() {
           batch_size: testConcurrentUsers,
           tp_size: testTpSize,
           backend: inferenceBackend,
+          prefix: testPrefix > 0 ? testPrefix : undefined,
           vram_gb: currentAicGpu?.vramGb ?? null,
           gpu_memory_utilization: currentAicGpu?.gpuMemoryUtilization,
           backend_version: backendVersion || undefined,
@@ -683,6 +701,7 @@ export default function QuickEstimate() {
         { k: 'ISL', v: `${testISL}` },
         { k: 'OSL', v: `${testOSL}` },
         { k: 'users', v: `${testConcurrentUsers}` },
+        { k: 'prefix', v: `${testPrefix}` },
       ],
       fields: [
         {
@@ -708,6 +727,14 @@ export default function QuickEstimate() {
           type: 'number' as const,
           invalid: invalidUsers,
           onChange: (val: string) => handleConcurrentUsersChange(val)
+        },
+        {
+          label: 'Prefix length (tokens)',
+          value: prefixInput,
+          term: 'prefix',
+          type: 'number' as const,
+          invalid: false,
+          onChange: (val: string) => handlePrefixChange(val)
         },
       ],
     },
@@ -910,6 +937,25 @@ export default function QuickEstimate() {
         </div>
       </div>
 
+
+      {/* ---------- workload presets ---------- */}
+      {hydrated && getAppConfig().workloadPresets.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
+          {getAppConfig().workloadPresets.map(p => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => applyPreset(p)}
+              style={{ fontSize: '12px', padding: '3px 10px', border: '1px solid #c6c7c8', borderRadius: '4px', background: '#fff', color: '#151515', cursor: 'pointer', fontFamily: 'var(--font-sans, sans-serif)', whiteSpace: 'nowrap' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f0f0f0')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ---------- input row ---------- */}
       <div className={`${styles.card} ${styles.inputCard}`} data-tour="model">

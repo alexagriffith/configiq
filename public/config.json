@@ -30,5 +30,13 @@
     "nvidia/Kimi-K2.5-NVFP4",
     "moonshotai/Kimi-K3"
   ],
-  "modelRequestUrl": "https://github.com/redhat-performance/configiq/issues/new?labels=model-request&title=[Model+Request]+"
+  "modelRequestUrl": "https://github.com/redhat-performance/configiq/issues/new?labels=model-request&title=[Model+Request]+",
+  "workloadPresets": [
+    { "key": "chat",    "label": "Interactive chat",  "isl":  512, "osl":  256, "ttft":   500, "tpot":  30, "concurrency":  32, "prefix":    0 },
+    { "key": "rag",     "label": "RAG",               "isl": 2048, "osl":  256, "ttft":  1000, "tpot":  50, "concurrency":  32, "prefix":  512 },
+    { "key": "agentic", "label": "Agentic",           "isl": 4096, "osl":  512, "ttft":  2000, "tpot":  50, "concurrency":  16, "prefix": 1024 },
+    { "key": "coding",  "label": "Coding",            "isl": 2048, "osl": 1024, "ttft":  2000, "tpot":  30, "concurrency":  16, "prefix":  512 },
+    { "key": "batch",   "label": "Batch / offline",   "isl": 4096, "osl": 1024, "ttft": 10000, "tpot": 100, "concurrency": 128, "prefix":    0 },
+    { "key": "voice",   "label": "Voice / real-time", "isl":  256, "osl":  128, "ttft":   300, "tpot":  15, "concurrency":  64, "prefix":    0 }
+  ]
 }

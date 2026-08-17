@@ -33,6 +33,7 @@ export interface EstimateAdapterInput {
   hf_model_config?: Record<string, unknown> | null
   moe_ep_size?: number
   moe_tp_size?: number
+  prefix?: number
 }
 
 function isMoeConfig(config: Record<string, unknown> | null | undefined): boolean {
@@ -78,6 +79,7 @@ export async function fetchEstimateAsInferenceResult(
   }
 
   if (input.backend_version) body.backend_version = input.backend_version
+  if (input.prefix != null && input.prefix > 0) body.prefix = input.prefix
 
   if (input.hf_model_config) {
     body.model_config = input.hf_model_config
