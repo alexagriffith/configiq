@@ -50,18 +50,21 @@ export function GpuBubbleChart({ data, width, height, xLabel, yLabel }: Props) {
   const sizeValues = data.map(d => d.size);
 
   const xMin = 0;
-  const xMax = Math.max(...xValues) * 1.1;
+  const rawXMax = Math.max(0, ...xValues);
+  const xMax = Number.isFinite(rawXMax) && rawXMax > 0 ? rawXMax * 1.1 : 1;
   const yMin = 0;
-  const yMax = Math.max(...yValues) * 1.1;
-  const sizeMin = Math.min(...sizeValues);
-  const sizeMax = Math.max(...sizeValues);
+  const rawYMax = Math.max(0, ...yValues);
+  const yMax = Number.isFinite(rawYMax) && rawYMax > 0 ? rawYMax * 1.1 : 1;
+  const sizeMin = sizeValues.length === 0 ? 0 : Math.min(...sizeValues);
+  const sizeMax = sizeValues.length === 0 ? 0 : Math.max(...sizeValues);
+  const rawSizeRange = sizeMax - sizeMin;
+  const sizeRange = Number.isFinite(rawSizeRange) && rawSizeRange > 0 ? rawSizeRange : 1;
 
   // Scale functions
   const scaleX = (val: number) => (val / xMax) * chartWidth;
   const scaleY = (val: number) => chartHeight - (val / yMax) * chartHeight;
   const scaleSize = (val: number) => {
-    // Map size values to radius 5-30px
-    const normalized = (val - sizeMin) / (sizeMax - sizeMin);
+    const normalized = (val - sizeMin) / sizeRange;
     return 5 + normalized * 25;
   };
 
