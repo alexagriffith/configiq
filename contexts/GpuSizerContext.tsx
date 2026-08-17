@@ -13,6 +13,8 @@ interface GpuSizerParams {
   backend?: string;
   target_concurrency?: number;
   target_request_rate?: number;
+  request_latency?: number;
+  prefix?: number;
 }
 
 interface GpuSizerState {
@@ -93,6 +95,8 @@ export function GpuSizerProvider({ children }: { children: React.ReactNode }) {
       delete requestBody.target_concurrency;
       requestBody.target_request_rate = p.target_request_rate;
     }
+    if (p.request_latency != null) requestBody.request_latency = p.request_latency;
+    if (p.prefix != null && p.prefix > 0) requestBody.prefix = p.prefix;
 
     setParams(p);
     setIsLoading(true);

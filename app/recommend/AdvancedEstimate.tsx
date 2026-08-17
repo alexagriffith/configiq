@@ -150,6 +150,10 @@ export default function AdvancedEstimate() {
   const [isl, setIsl] = React.useState(2048);
   const [osl, setOsl] = React.useState(128);
   const [ttft, setTtft] = React.useState(1000);
+  const [tpot, setTpot] = React.useState(30);
+  const [targetConcurrency, setTargetConcurrency] = React.useState(32);
+  const [requestLatency, setRequestLatency] = React.useState<number | null>(null);
+  const [prefix, setPrefix] = React.useState(0);
 
   // Model status + HF config
   const [modelStatus, setModelStatus] = React.useState<'idle' | 'supported' | 'catalog' | 'fetching' | 'fetched' | 'error'>('idle');
@@ -167,10 +171,16 @@ export default function AdvancedEstimate() {
   const [islInput, setIslInput] = React.useState('2048');
   const [oslInput, setOslInput] = React.useState('128');
   const [ttftInput, setTtftInput] = React.useState('1000');
+  const [tpotInput, setTpotInput] = React.useState('30');
+  const [concurrencyInput, setConcurrencyInput] = React.useState('32');
+  const [latencyInput, setLatencyInput] = React.useState('');
+  const [prefixInput, setPrefixInput] = React.useState('0');
 
   const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
   const invalidOSL = oslInput === '' || parseInt(oslInput, 10) < 1;
   const invalidTTFT = ttftInput === '' || !Number.isFinite(Number(ttftInput)) || Number(ttftInput) <= 0;
+  const invalidTpot = tpotInput === '' || !Number.isFinite(Number(tpotInput)) || Number(tpotInput) <= 0;
+  const invalidConcurrency = concurrencyInput === '' || parseInt(concurrencyInput, 10) < 1;
 
   const handleIslChange = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -193,6 +203,33 @@ export default function AdvancedEstimate() {
     if (Number.isFinite(n) && n > 0) setTtft(n);
   };
 
+  const handleTpotChange = (raw: string) => {
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    setTpotInput(cleaned);
+    const n = Number(cleaned);
+    if (Number.isFinite(n) && n > 0) setTpot(n);
+  };
+
+  const handleConcurrencyChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setConcurrencyInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTargetConcurrency(n);
+  };
+
+  const handleLatencyChange = (raw: string) => {
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    setLatencyInput(cleaned);
+    const n = Number(cleaned);
+    setRequestLatency(cleaned === '' ? null : (Number.isFinite(n) && n > 0 ? n : null));
+  };
+
+  const handlePrefixChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setPrefixInput(digits);
+    const n = parseInt(digits, 10);
+    setPrefix(isNaN(n) ? 0 : n);
+  };
 
   // Model status check + fetch HF config
   React.useEffect(() => {
@@ -234,7 +271,12 @@ export default function AdvancedEstimate() {
   const currentGpuOption = aicGpus.find(g => g.systemId === gpuSystem) ?? aicGpus[0] ?? null;
 
   const handleCalculate = () => {
-    startSizing({ model_path: model, system: gpuSystem, isl, osl, ttft, tpot: 30, target_concurrency: 32, backend: inferenceBackend });
+    startSizing({
+      model_path: model, system: gpuSystem, isl, osl, ttft,
+      tpot, target_concurrency: targetConcurrency, prefix,
+      ...(requestLatency != null ? { request_latency: requestLatency } : {}),
+      backend: inferenceBackend,
+    });
   };
 
   // Local memory analysis using the same engine as Quick Estimate
@@ -287,7 +329,7 @@ export default function AdvancedEstimate() {
           <button
             className={styles.calcBtn}
             onClick={handleCalculate}
-            disabled={isLoading || !model.includes('/') || invalidISL || invalidOSL || invalidTTFT}
+            disabled={isLoading || !model.includes('/') || invalidISL || invalidOSL || invalidTTFT || invalidTpot || invalidConcurrency}
           >
             {isLoading ? 'Calculating...' : 'Calculate'}
           </button>
@@ -295,7 +337,7 @@ export default function AdvancedEstimate() {
       </div>
 
       <InfoStrip>
-        Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(3)}s.
+        Based on your configuration — ISL {isl.toLocaleString()}, OSL {osl}, TTFT target {(ttft / 1000).toFixed(3)}s{prefix > 0 ? `, prefix ${prefix.toLocaleString()} tokens` : ''}, concurrency {targetConcurrency}, TPOT {tpot} ms.
         {' '}<InfoStripAction onClick={() => setExpanded(expanded.includes('customize') ? expanded.filter(e => e !== 'customize') : [...expanded, 'customize'])}>
           Adjust? (edit fields below)
         </InfoStripAction>
@@ -337,8 +379,17 @@ export default function AdvancedEstimate() {
                   step={0.1}
                 />
               </div>
+              <div>
+                <label className={styles.fieldLabel}>Prefix length (tokens)</label>
+                <input
+                  type="number"
+                  className={styles.paramInput}
+                  value={prefixInput}
+                  onChange={e => handlePrefixChange(e.target.value)}
+                  min={0}
+                />
+              </div>
             </div>
-
 
             {/* Additional constraints */}
             <Accordion style={{ marginTop: 12 }}>
@@ -355,16 +406,36 @@ export default function AdvancedEstimate() {
                 <AccordionContent isHidden={!expanded.includes('constraints')}>
                   <div className={styles.paramGrid} style={{ marginTop: 8 }}>
                     <div>
-                      <label className={styles.fieldLabel}>Batch size (optional)</label>
-                      <input type="number" className={styles.paramInput} placeholder="Auto" min={1} />
+                      <label className={styles.fieldLabel}>Target concurrency</label>
+                      <input
+                        type="number"
+                        className={invalidConcurrency ? styles.paramInputInvalid : styles.paramInput}
+                        value={concurrencyInput}
+                        onChange={e => handleConcurrencyChange(e.target.value)}
+                        min={1}
+                      />
                     </div>
                     <div>
-                      <label className={styles.fieldLabel}>Tokens/sec per user (optional)</label>
-                      <input type="number" className={styles.paramInput} placeholder="Auto" min={1} step={0.1} />
+                      <label className={styles.fieldLabel}>Max TPOT (ms)</label>
+                      <input
+                        type="number"
+                        className={invalidTpot ? styles.paramInputInvalid : styles.paramInput}
+                        value={tpotInput}
+                        onChange={e => handleTpotChange(e.target.value)}
+                        min={0.1}
+                        step={0.1}
+                      />
                     </div>
                     <div>
-                      <label className={styles.fieldLabel}>E2E latency ms (optional)</label>
-                      <input type="number" className={styles.paramInput} placeholder="Auto" min={1} />
+                      <label className={styles.fieldLabel}>Max E2E latency (ms, optional)</label>
+                      <input
+                        type="number"
+                        className={styles.paramInput}
+                        value={latencyInput}
+                        onChange={e => handleLatencyChange(e.target.value)}
+                        placeholder="Auto"
+                        min={1}
+                      />
                     </div>
                   </div>
                 </AccordionContent>
