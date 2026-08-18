@@ -402,16 +402,6 @@ export default function AdvancedEstimate() {
                   step={0.1}
                 />
               </div>
-              <div>
-                <label className={styles.fieldLabel}>Prefix length (tokens)</label>
-                <input
-                  type="number"
-                  className={styles.paramInput}
-                  value={prefixInput}
-                  onChange={e => handlePrefixChange(e.target.value)}
-                  min={0}
-                />
-              </div>
             </div>
 
             {/* Additional constraints */}
@@ -427,7 +417,7 @@ export default function AdvancedEstimate() {
                   Additional constraints
                 </AccordionToggle>
                 <AccordionContent isHidden={!expanded.includes('constraints')}>
-                  <div className={styles.paramGrid} style={{ marginTop: 8 }}>
+                  <div className={styles.paramGrid} style={{ marginTop: 8, gridTemplateColumns: 'repeat(4, 1fr)' }}>
                     <div>
                       <label className={styles.fieldLabel}>Target concurrency</label>
                       <input
@@ -447,6 +437,16 @@ export default function AdvancedEstimate() {
                         onChange={e => handleTpotChange(e.target.value)}
                         min={0.1}
                         step={0.1}
+                      />
+                    </div>
+                    <div>
+                      <label className={styles.fieldLabel}>Prefix length (tokens)</label>
+                      <input
+                        type="number"
+                        className={styles.paramInput}
+                        value={prefixInput}
+                        onChange={e => handlePrefixChange(e.target.value)}
+                        min={0}
                       />
                     </div>
                     <div>
