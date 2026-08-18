@@ -272,6 +272,8 @@ export default function AdvancedEstimate() {
 
   const currentGpuOption = aicGpus.find(g => g.systemId === gpuSystem) ?? aicGpus[0] ?? null;
 
+  const [activePreset, setActivePreset] = React.useState<string>('default');
+
   const applyPreset = (p: WorkloadPreset) => {
     setIsl(p.isl); setIslInput(String(p.isl));
     setOsl(p.osl); setOslInput(String(p.osl));
@@ -279,6 +281,7 @@ export default function AdvancedEstimate() {
     setTpot(p.tpot); setTpotInput(String(p.tpot));
     setTargetConcurrency(p.concurrency); setConcurrencyInput(String(p.concurrency));
     setPrefix(p.prefix); setPrefixInput(String(p.prefix));
+    setActivePreset(p.key);
     setExpanded(prev => prev.includes('customize') ? prev : [...prev, 'customize']);
   };
 
@@ -356,9 +359,9 @@ export default function AdvancedEstimate() {
       {hydrated && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
-          <Button variant="tertiary" size="sm" onClick={resetToDefaults}>Default</Button>
+          <Button variant={activePreset === 'default' ? 'secondary' : 'tertiary'} size="sm" onClick={resetToDefaults}>Default</Button>
           {getAppConfig().workloadPresets.map(p => (
-            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
+            <Button key={p.key} variant={activePreset === p.key ? 'secondary' : 'tertiary'} size="sm" onClick={() => applyPreset(p)}>
               {p.label}
             </Button>
           ))}
@@ -420,7 +423,7 @@ export default function AdvancedEstimate() {
                   )}
                   isExpanded={expanded.includes('constraints')}
                 >
-                  Additional constraints
+                  Additional constraints (optional)
                 </AccordionToggle>
                 <AccordionContent isHidden={!expanded.includes('constraints')}>
                   <div className={styles.paramGrid} style={{ marginTop: 8, gridTemplateColumns: 'repeat(4, 1fr)' }}>

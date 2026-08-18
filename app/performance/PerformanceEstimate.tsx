@@ -208,11 +208,14 @@ export default function QuickEstimate() {
     setTestPrefix(isNaN(n) ? 0 : n);
   };
 
-  const applyPreset = (p: Pick<WorkloadPreset, 'isl' | 'osl' | 'concurrency' | 'prefix'>) => {
+  const [activePreset, setActivePreset] = React.useState<string>('default');
+
+  const applyPreset = (p: Pick<WorkloadPreset, 'key' | 'isl' | 'osl' | 'concurrency' | 'prefix'>) => {
     setTestISL(p.isl); setIslInput(String(p.isl));
     setTestOSL(p.osl); setOslInput(String(p.osl));
     setTestConcurrentUsers(p.concurrency); setConcurrentUsersInput(String(p.concurrency));
     setTestPrefix(p.prefix); setPrefixInput(String(p.prefix));
+    setActivePreset(p.key);
   };
 
   const resetToDefaults = () => applyPreset(DEFAULT_WORKLOAD);
@@ -978,9 +981,9 @@ export default function QuickEstimate() {
       {hydrated && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
-          <Button variant="tertiary" size="sm" onClick={resetToDefaults}>Default</Button>
+          <Button variant={activePreset === 'default' ? 'secondary' : 'tertiary'} size="sm" onClick={resetToDefaults}>Default</Button>
           {getAppConfig().workloadPresets.map(p => (
-            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
+            <Button key={p.key} variant={activePreset === p.key ? 'secondary' : 'tertiary'} size="sm" onClick={() => applyPreset(p)}>
               {p.label}
             </Button>
           ))}
