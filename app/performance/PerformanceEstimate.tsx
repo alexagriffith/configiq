@@ -43,9 +43,6 @@ function modelSuggestions(): string {
   return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
 }
 
-function gpuOptionLabel(label: string, vramGb: number | null): string {
-  return vramGb ? `${label} — ${vramGb} GB` : label;
-}
 
 const QUICK_ESTIMATE_TOUR: TourStep[] = [
   {
@@ -290,6 +287,8 @@ export default function QuickEstimate() {
           gpu_memory_utilization: currentAicGpu?.gpuMemoryUtilization,
           backend_version: backendVersion || undefined,
           hf_model_config: hfConfig as Record<string, unknown> | null,
+          kvcache_quant_mode: testKVCachePrecision === 'FP8' ? 'fp8' : null,
+          gemm_quant_mode: testWeightPrecision === 'FP8' ? 'fp8' : testWeightPrecision === 'INT8' ? 'int8' : testWeightPrecision === 'INT4' ? 'int4' : null,
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
         if (!cancelled) {
@@ -759,22 +758,6 @@ export default function QuickEstimate() {
           type: 'select' as const,
           options: ['FP16', 'FP8'] as const,
           onChange: (val: string) => setTestKVCachePrecision(val as any)
-        },
-      ],
-    },
-    {
-      id: 'hardware', title: 'Hardware',
-      summary: [{ k: 'GPU', v: currentAicGpu ? gpuOptionLabel(currentAicGpu.label, currentAicGpu.vramGb) : gpu }],
-      fields: [
-        {
-          label: 'GPU type',
-          value: gpu,
-          type: 'select' as const,
-          options: aicGpus.map(g => gpuOptionLabel(g.label, g.vramGb)),
-          onChange: (val: string) => {
-            const match = aicGpus.find(g => gpuOptionLabel(g.label, g.vramGb) === val)
-            if (match) setGpu(match.systemId)
-          }
         },
       ],
     },
