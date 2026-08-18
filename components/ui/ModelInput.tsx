@@ -22,8 +22,7 @@ interface ModelInputProps {
 }
 
 function suggestedNames(): string {
-  const names = getAppConfig().suggestedModelNames
-  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi'
+  return getAppConfig().suggestedModelNames.join(', ')
 }
 
 export function ModelInput({
@@ -37,21 +36,21 @@ export function ModelInput({
   placeholder = 'Type model name or select from dropdown...',
   helperText,
 }: ModelInputProps) {
-  const [supportedOnly, setSupportedOnly] = React.useState(false)
+  const [testedOnly, setTestedOnly] = React.useState(false)
   const cfg = getAppConfig()
-  const supportedModels = cfg.supportedModels ?? []
-  const validatedModels = modelOptions.filter(m => supportedModels.includes(m))
-  const displayModels = supportedOnly ? validatedModels : modelOptions
+  const testedModels = cfg.testedModels ?? []
+  const filteredModels = modelOptions.filter(m => testedModels.includes(m))
+  const displayModels = testedOnly ? filteredModels : modelOptions
   const datalistId = `${id}-options`
 
   const prevModel = React.useRef(model)
 
   const handleToggle = (_: React.FormEvent, checked: boolean) => {
-    setSupportedOnly(checked)
+    setTestedOnly(checked)
     if (checked) {
       prevModel.current = model
-      if (!supportedModels.includes(model) && validatedModels.length > 0) {
-        onChange(validatedModels[0])
+      if (!testedModels.includes(model) && filteredModels.length > 0) {
+        onChange(filteredModels[0])
       }
     } else {
       onChange(prevModel.current)
@@ -67,7 +66,7 @@ export function ModelInput({
         <Switch
           id={`${id}-validated-only`}
           label="Tested only"
-          isChecked={supportedOnly}
+          isChecked={testedOnly}
           onChange={handleToggle}
           isReversed
         />
@@ -80,7 +79,7 @@ export function ModelInput({
           list={datalistId}
           value={model}
           onChange={e => onChange(e.target.value)}
-          placeholder={supportedOnly ? 'Select a tested model...' : placeholder}
+          placeholder={testedOnly ? 'Select a tested model...' : placeholder}
           className={styles.input}
           spellCheck={false}
           autoComplete="off"
@@ -99,12 +98,12 @@ export function ModelInput({
       </div>
 
       <div className={styles.helperText}>
-        {helperText ?? (supportedOnly ? (
+        {helperText ?? (testedOnly ? (
             <span>Tested: {suggestedNames()}, ... — type to autocomplete</span>
           ) : (
             <>
               <div>Tested: {suggestedNames()}, ... — type to autocomplete</div>
-              {model && !supportedModels.includes(model) && cfg.modelRequestUrl && (
+              {model && !testedModels.includes(model) && cfg.modelRequestUrl && (
                 <div>New model? <a href={cfg.modelRequestUrl + encodeURIComponent(model)} target="_blank" rel="noopener" className={styles.requestLink}>Request testing →</a></div>
               )}
               {hfToken ? (

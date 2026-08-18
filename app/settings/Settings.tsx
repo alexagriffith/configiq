@@ -55,7 +55,7 @@ export function Settings() {
     if (catalogLoading) { setModelStatus('idle'); return; }
     if (!localModel || !localModel.includes('/')) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
-      if (getAppConfig().supportedModels.includes(localModel)) { setModelStatus('supported'); return; }
+      if (getAppConfig().testedModels.includes(localModel)) { setModelStatus('supported'); return; }
       const inCatalog = modelOptions.includes(localModel);
       if (inCatalog) { setModelStatus('catalog'); return; }
       setModelStatus('fetching');
@@ -143,12 +143,12 @@ export function Settings() {
                 Models tested for use with the AIConfigurator sizing engine.
               </div>
             </div>
-            <Label color="blue" isCompact>{getAppConfig().supportedModels.length} models</Label>
+            <Label color="blue" isCompact>{getAppConfig().testedModels.length} models</Label>
           </div>
           {validatedOpen && (
             <div className={styles.fieldWrap}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px' }}>
-                {getAppConfig().supportedModels.map(m => (
+                {getAppConfig().testedModels.map(m => (
                   <Label
                     key={m}
                     color="blue"
