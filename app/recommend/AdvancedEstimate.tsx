@@ -238,7 +238,7 @@ export default function AdvancedEstimate() {
     if (catalogLoading) { setModelStatus('idle'); return; }
     const timer = setTimeout(() => {
       if (!model.includes('/')) { setModelStatus('idle'); return; }
-      if (getAppConfig().supportedModels.includes(model)) { setModelStatus('supported'); return; }
+      if (getAppConfig().testedModels.includes(model)) { setModelStatus('supported'); return; }
       const inCatalog = MODEL_OPTIONS.includes(model);
       if (inCatalog) { setModelStatus('catalog'); return; }
       setModelStatus('fetching');

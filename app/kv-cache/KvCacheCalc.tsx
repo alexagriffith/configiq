@@ -111,7 +111,7 @@ export default function KvCacheCalc() {
   };
 
   const catalogMatch = MODEL_OPTIONS.includes(model)
-  const kvModelStatus: ModelStatus = getAppConfig().supportedModels.includes(model)
+  const kvModelStatus: ModelStatus = getAppConfig().testedModels.includes(model)
     ? 'supported'
     : catalogMatch ? 'catalog'
     : catalogLoading ? 'fetching'

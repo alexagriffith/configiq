@@ -114,7 +114,7 @@ export default function QuickEstimate() {
   const [isUsingFallback, setIsUsingFallback] = React.useState(false);
   const [fallbackReason, setFallbackReason] = React.useState<string>('');
 
-  const modelStatus: ModelStatus = getAppConfig().supportedModels.includes(model)
+  const modelStatus: ModelStatus = getAppConfig().testedModels.includes(model)
     ? 'supported'
     : aicModels.includes(model)
     ? 'catalog'
@@ -227,7 +227,7 @@ export default function QuickEstimate() {
     setFallbackReason('');
 
     // Skip HF fetch for supported and catalog models — we know they work
-    if (getAppConfig().supportedModels.includes(model) || aicModels.includes(model)) {
+    if (getAppConfig().testedModels.includes(model) || aicModels.includes(model)) {
       setIsFetchingConfig(false);
       return;
     }

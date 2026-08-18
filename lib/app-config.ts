@@ -7,7 +7,7 @@ export interface AppConfig {
   defaultFrontierModel: string;
   defaultBackend: string;
   backendVersions: Record<string, string>;
-  supportedModels: string[];
+  testedModels: string[];
   suggestedModelNames: string[];
   modelRequestUrl: string;
   workloadPresets: WorkloadPreset[];
@@ -25,7 +25,7 @@ const FALLBACK: AppConfig = {
     'tensorrt-llm': '11.2',
     'sglang': '0.5.17',
   },
-  supportedModels: [],
+  testedModels: [],
   suggestedModelNames: [],
   modelRequestUrl: '',
   workloadPresets: [],
@@ -46,7 +46,7 @@ export async function loadAppConfig(): Promise<AppConfig> {
       defaultFrontierModel: data.defaultFrontierModel ?? FALLBACK.defaultFrontierModel,
       defaultBackend: data.defaultBackend ?? FALLBACK.defaultBackend,
       backendVersions: data.backendVersions ?? FALLBACK.backendVersions,
-      supportedModels: data.supportedModels ?? FALLBACK.supportedModels,
+      testedModels: data.testedModels ?? FALLBACK.testedModels,
       suggestedModelNames: data.suggestedModelNames ?? FALLBACK.suggestedModelNames,
       modelRequestUrl: data.modelRequestUrl ?? FALLBACK.modelRequestUrl,
       workloadPresets: data.workloadPresets ?? FALLBACK.workloadPresets,
