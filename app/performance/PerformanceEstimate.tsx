@@ -39,8 +39,7 @@ import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
 function modelSuggestions(): string {
-  const names = getAppConfig().suggestedModelNames;
-  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi';
+  return getAppConfig().suggestedModelNames.join(', ');
 }
 
 function gpuOptionLabel(label: string, vramGb: number | null): string {

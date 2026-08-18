@@ -22,8 +22,7 @@ interface ModelInputProps {
 }
 
 function suggestedNames(): string {
-  const names = getAppConfig().suggestedModelNames
-  return names.length > 0 ? names.join(', ') : 'Nemotron, DeepSeek V4, Gemma 4, Kimi'
+  return getAppConfig().suggestedModelNames.join(', ')
 }
 
 export function ModelInput({
