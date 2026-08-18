@@ -8,3 +8,14 @@ export interface WorkloadPreset {
   concurrency: number
   prefix: number
 }
+
+export const DEFAULT_WORKLOAD: WorkloadPreset = {
+  key: 'default',
+  label: 'Default',
+  isl: 2048,
+  osl: 128,
+  ttft: 1000,
+  tpot: 30,
+  concurrency: 32,
+  prefix: 0,
+}

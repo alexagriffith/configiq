@@ -18,7 +18,7 @@ import { useGpuSizer } from '@/contexts/GpuSizerContext';
 import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAppConfig } from '@/lib/app-config';
-import type { WorkloadPreset } from '@/lib/workload-presets';
+import { DEFAULT_WORKLOAD, type WorkloadPreset } from '@/lib/workload-presets';
 import { ModelInput } from '@/components/ui/ModelInput';
 import { GpuSystemInput } from '@/components/ui/GpuSystemInput';
 
@@ -282,6 +282,11 @@ export default function AdvancedEstimate() {
     setExpanded(prev => prev.includes('customize') ? prev : [...prev, 'customize']);
   };
 
+  const resetToDefaults = () => {
+    applyPreset(DEFAULT_WORKLOAD);
+    setRequestLatency(null); setLatencyInput('');
+  };
+
   const handleCalculate = () => {
     startSizing({
       model_path: model, system: gpuSystem, isl, osl, ttft,
@@ -348,9 +353,10 @@ export default function AdvancedEstimate() {
         </div>
       </div>
 
-      {hydrated && getAppConfig().workloadPresets.length > 0 && (
+      {hydrated && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
+          <Button variant="tertiary" size="sm" onClick={resetToDefaults}>Default</Button>
           {getAppConfig().workloadPresets.map(p => (
             <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
               {p.label}

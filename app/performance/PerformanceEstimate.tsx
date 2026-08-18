@@ -34,7 +34,7 @@ import { useAicCatalog } from '@/lib/hooks/useAicCatalog';
 import { GpuChipLoader } from '@/components/GpuChipLoader/GpuChipLoader';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAppConfig } from '@/lib/app-config';
-import type { WorkloadPreset } from '@/lib/workload-presets';
+import { DEFAULT_WORKLOAD, type WorkloadPreset } from '@/lib/workload-presets';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
 
@@ -214,6 +214,8 @@ export default function QuickEstimate() {
     setTestConcurrentUsers(p.concurrency); setConcurrentUsersInput(String(p.concurrency));
     setTestPrefix(p.prefix); setPrefixInput(String(p.prefix));
   };
+
+  const resetToDefaults = () => applyPreset(DEFAULT_WORKLOAD);
 
   // Live pricing from Cloudflare Worker
   const [livePricing, setLivePricing] = React.useState<Record<string, number>>({});
@@ -938,18 +940,6 @@ export default function QuickEstimate() {
       </div>
 
 
-      {/* ---------- workload presets ---------- */}
-      {hydrated && getAppConfig().workloadPresets.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
-          {getAppConfig().workloadPresets.map(p => (
-            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
-              {p.label}
-            </Button>
-          ))}
-        </div>
-      )}
-
       {/* ---------- input row ---------- */}
       <div className={`${styles.card} ${styles.inputCard}`} data-tour="model">
         <div className={styles.inputRow}>
@@ -983,6 +973,19 @@ export default function QuickEstimate() {
         </div>
 
       </div>
+
+      {/* ---------- workload presets ---------- */}
+      {hydrated && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#3c3f42', whiteSpace: 'nowrap' }}>Workload:</span>
+          <Button variant="tertiary" size="sm" onClick={resetToDefaults}>Default</Button>
+          {getAppConfig().workloadPresets.map(p => (
+            <Button key={p.key} variant="tertiary" size="sm" onClick={() => applyPreset(p)}>
+              {p.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       <InfoStrip data-tour="warning">
         Based on your configuration — ISL {testISL}, OSL {testOSL}, {testKVCachePrecision} KV cache,
