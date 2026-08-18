@@ -450,7 +450,7 @@ export default function AdvancedEstimate() {
                       />
                     </div>
                     <div>
-                      <label className={styles.fieldLabel}>Max E2E latency (ms, optional)</label>
+                      <label className={styles.fieldLabel}>Max E2E latency (ms)</label>
                       <input
                         type="number"
                         className={invalidLatency ? styles.paramInputInvalid : styles.paramInput}
