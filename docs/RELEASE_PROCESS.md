@@ -12,11 +12,12 @@ ConfigIQ uses semantic versioning with git tags to trigger container builds and 
    ```
    Use `patch`, `minor`, or `major` depending on the type of release.
 
-2. **Create and push a git tag**:
+2. **Create and push a signed git tag**:
    ```bash
-   git tag v0.2.1
+   git tag -s v0.2.1 -m "Release v0.2.1"
    git push origin v0.2.1
    ```
+   The `-s` flag creates a signed tag for release verification. The `-m` flag provides the tag message.
 
 3. **GitHub Actions automatically**:
    - Triggers the build workflow (`.github/workflows/build.yml`)
