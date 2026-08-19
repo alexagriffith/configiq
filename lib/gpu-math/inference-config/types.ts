@@ -5,7 +5,7 @@ import type { HFModelConfig } from '@/lib/huggingface/fetch-config'
 
 export interface InferenceRequest {
   model_name: string
-  precision: 'FP16' | 'FP8' | 'INT8' | 'INT4'  // Weight precision
+  precision: 'FP16' | 'FP8' | 'INT8' | 'INT4' | 'MXFP4'  // Weight precision
   gpu_type: string
   gpu_count?: number  // Optional - engine recommends if not provided
   concurrent_users: number

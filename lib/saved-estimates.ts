@@ -20,6 +20,7 @@ export interface SavedEstimate {
   results: {
     gpusRequired: number;
     tpSize: number;
+    ppSize: number;
     replicas: number;
     weightMemoryGB: number;
     kvCachePerUserGB: number;

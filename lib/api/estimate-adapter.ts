@@ -26,6 +26,7 @@ export interface EstimateAdapterInput {
   osl: number
   batch_size: number
   tp_size: number
+  pp_size?: number
   vram_gb?: number | null
   gpu_memory_utilization?: number
   backend?: string
@@ -80,6 +81,7 @@ export async function fetchEstimateAsInferenceResult(
     tp_size: input.tp_size,
   }
 
+  if (input.pp_size != null && input.pp_size > 1) body.pp_size = input.pp_size
   if (input.backend_version) body.backend_version = input.backend_version
   if (input.prefix != null && input.prefix > 0) body.prefix = input.prefix
   if (input.kvcache_quant_mode) body.kvcache_quant_mode = input.kvcache_quant_mode

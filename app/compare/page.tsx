@@ -35,6 +35,7 @@ const MOCK_DATA: SavedEstimate[] = [
     results: {
       gpusRequired: 8,
       tpSize: 1,
+      ppSize: 1,
       replicas: 8,
       weightMemoryGB: 64,
       kvCachePerUserGB: 2.0,
@@ -66,6 +67,7 @@ const MOCK_DATA: SavedEstimate[] = [
     results: {
       gpusRequired: 4,
       tpSize: 2,
+      ppSize: 1,
       replicas: 2,
       weightMemoryGB: 140,
       kvCachePerUserGB: 2.5,
@@ -97,6 +99,7 @@ const MOCK_DATA: SavedEstimate[] = [
     results: {
       gpusRequired: 8,
       tpSize: 1,
+      ppSize: 1,
       replicas: 8,
       weightMemoryGB: 62,
       kvCachePerUserGB: 0.054,
@@ -128,6 +131,7 @@ const MOCK_DATA: SavedEstimate[] = [
     results: {
       gpusRequired: 1,
       tpSize: 1,
+      ppSize: 1,
       replicas: 1,
       weightMemoryGB: 64,
       kvCachePerUserGB: 0.497,

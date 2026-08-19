@@ -155,19 +155,22 @@ export default function QuickEstimate() {
   const [testTpSize, setTestTpSize] = React.useState(1);
   const [calcTrigger, setCalcTrigger] = React.useState(0);
   const [elapsed, setElapsed] = React.useState(0);
-  const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4'>('FP16');
-  const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');44
+  const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4' | 'MXFP4'>('FP16');
+  const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');
+  const [testPpSize, setTestPpSize] = React.useState(1);
   
   const [islInput, setIslInput] = React.useState('2048');
   const [oslInput, setOslInput] = React.useState('128');
   const [concurrentUsersInput, setConcurrentUsersInput] = React.useState('32');
   const [prefixInput, setPrefixInput] = React.useState('0');
   const [tpSizeInput, setTpSizeInput] = React.useState('1');
+  const [ppSizeInput, setPpSizeInput] = React.useState('1');
 
   const invalidISL = islInput === '' || parseInt(islInput, 10) < 1;
   const invalidOSL = oslInput === '' || parseInt(oslInput, 10) < 1;
   const invalidUsers = concurrentUsersInput === '' || parseInt(concurrentUsersInput, 10) < 1;
   const invalidTpSize = tpSizeInput === '' || parseInt(tpSizeInput, 10) < 1;
+  const invalidPpSize = ppSizeInput === '' || parseInt(ppSizeInput, 10) < 1;
 
   const handleIslChange = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
@@ -195,6 +198,13 @@ export default function QuickEstimate() {
     setTpSizeInput(digits);
     const n = parseInt(digits, 10);
     if (!isNaN(n) && n >= 1) setTestTpSize(n);
+  };
+
+  const handlePpSizeChange = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    setPpSizeInput(digits);
+    const n = parseInt(digits, 10);
+    if (!isNaN(n) && n >= 1) setTestPpSize(n);
   };
 
   const handlePrefixChange = (raw: string) => {
@@ -285,6 +295,7 @@ export default function QuickEstimate() {
           osl: testOSL,
           batch_size: testConcurrentUsers,
           tp_size: testTpSize,
+          pp_size: testPpSize,
           backend: inferenceBackend,
           prefix: testPrefix > 0 ? testPrefix : undefined,
           vram_gb: currentAicGpu?.vramGb ?? null,
@@ -292,7 +303,10 @@ export default function QuickEstimate() {
           backend_version: backendVersion || undefined,
           hf_model_config: hfConfig as Record<string, unknown> | null,
           kvcache_quant_mode: testKVCachePrecision === 'FP8' ? 'fp8' : null,
-          gemm_quant_mode: testWeightPrecision === 'FP8' ? 'fp8' : testWeightPrecision === 'INT8' ? 'int8' : testWeightPrecision === 'INT4' ? 'int4' : null,
+          gemm_quant_mode: testWeightPrecision === 'FP8' ? 'fp8' :
+                          testWeightPrecision === 'INT8' ? 'int8_wo' :
+                          testWeightPrecision === 'INT4' ? 'int4_wo' :
+                          testWeightPrecision === 'MXFP4' ? 'int4_wo' : null,  // MXFP4 → int4_wo for non-MoE
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
         if (!cancelled) {
@@ -418,7 +432,7 @@ export default function QuickEstimate() {
   // animated headline numbers
   // Calculate real values from inference engine
   const realGpuCount = testResult ?
-    testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas :
+    testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas * (testResult.parallelism_strategy.pp_size || 1) :
     0;
 
   const realWeightGB = testResult ?
@@ -443,6 +457,7 @@ export default function QuickEstimate() {
     if (method.includes('fp8') || method === 'fp8') return 'FP8';
     if (method.includes('int8') || method === 'int8') return 'INT8';
     if (method.includes('int4') || method === 'int4') return 'INT4';
+    if (method.includes('mxfp4') || method === 'mxfp4') return 'MXFP4';
     if (method === 'gptq' || method === 'awq') {
       // Check bits field for GPTQ/AWQ
       const bits = qconfig.bits || qconfig.num_bits || 4;
@@ -539,6 +554,7 @@ export default function QuickEstimate() {
       results: {
         gpusRequired: realGpuCount,
         tpSize: testResult.memory_analysis.tp_size,
+        ppSize: testResult.parallelism_strategy.pp_size,
         replicas: testResult.memory_analysis.replicas,
         weightMemoryGB: testResult.memory_analysis.weight_gb,
         kvCachePerUserGB: kvPerUserGB,
@@ -563,7 +579,7 @@ export default function QuickEstimate() {
   const handleCopyAPIRequest = async () => {
     if (!testResult) return;
 
-    const apiRequest = {
+    const apiRequest: Record<string, unknown> = {
       model: {
         model_id: model,
         max_model_len: 'auto'
@@ -585,6 +601,10 @@ export default function QuickEstimate() {
       }
     };
 
+    if (testResult.parallelism_strategy.pp_size > 1) {
+      (apiRequest.gpu as Record<string, unknown>).pp_size = testResult.parallelism_strategy.pp_size;
+    }
+
     try {
       await navigator.clipboard.writeText(JSON.stringify(apiRequest, null, 2));
       setToastMessage('api-copied');
@@ -599,8 +619,11 @@ export default function QuickEstimate() {
   const handleCopyCLICommand = async () => {
     if (!testResult) return;
 
+    const ppFlag = testResult.parallelism_strategy.pp_size > 1
+      ? ` \\\n  --pipeline-parallel-size ${testResult.parallelism_strategy.pp_size}`
+      : '';
     const cliCommand = `vllm serve ${model} \\
-  --tensor-parallel-size ${testResult.memory_analysis.tp_size} \\
+  --tensor-parallel-size ${testResult.memory_analysis.tp_size}${ppFlag} \\
   --max-model-len auto \\
   --gpu-memory-utilization 0.90 \\
   --dtype ${testWeightPrecision.toLowerCase()} \\
@@ -623,7 +646,7 @@ export default function QuickEstimate() {
 
     // Prepare data in CSV format
     const headers = [
-      'Model', 'GPU', 'GPUs Required', 'TP Size', 'Replicas',
+      'Model', 'GPU', 'GPUs Required', 'TP Size', 'PP Size', 'Replicas',
       'ISL', 'OSL', 'Concurrent Users',
       'Weight Precision', 'KV Cache Precision',
       'Weight Memory (GB)', 'KV Cache Total (GB)', 'KV Category',
@@ -632,7 +655,7 @@ export default function QuickEstimate() {
     ];
 
     const values = [
-      model, gpu, realGpuCount, testResult.memory_analysis.tp_size, testResult.memory_analysis.replicas,
+      model, gpu, realGpuCount, testResult.memory_analysis.tp_size, testResult.parallelism_strategy.pp_size, testResult.memory_analysis.replicas,
       testISL, testOSL, testConcurrentUsers,
       testWeightPrecision, testKVCachePrecision,
       testResult.memory_analysis.weight_gb.toFixed(1),
@@ -753,7 +776,7 @@ export default function QuickEstimate() {
             'Weight precision (overridden by model quantization_config)' : 'Weight precision',
           value: testWeightPrecision,
           type: 'select' as const,
-          options: ['FP16', 'FP8', 'INT8', 'INT4'] as const,
+          options: ['FP16', 'FP8', 'INT8', 'INT4', 'MXFP4'] as const,
           onChange: (val: string) => setTestWeightPrecision(val as any)
         },
         {
@@ -789,10 +812,11 @@ export default function QuickEstimate() {
       },
       summary: [
         { k: 'TP', v: `${testTpSize}` },
+        { k: 'PP', v: `${testPpSize}` },
       ],
       fields: [
         {
-          label: 'Tensor parallel size',
+          label: 'Tensor parallel size (TP)',
           value: tpSizeInput,
           term: 'tensorParallel',
           readonly: false,
@@ -801,8 +825,16 @@ export default function QuickEstimate() {
           onChange: (val: string) => handleTpSizeChange(val),
         },
         {
+          label: 'Pipeline parallel size (PP)',
+          value: ppSizeInput,
+          readonly: false,
+          type: 'number' as const,
+          invalid: invalidPpSize,
+          onChange: (val: string) => handlePpSizeChange(val),
+        },
+        {
           label: 'Total GPUs',
-          value: testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas}` : `${tpSizeInput}`,
+          value: testResult ? `${testResult.memory_analysis.tp_size * testResult.memory_analysis.replicas * testResult.parallelism_strategy.pp_size}` : `${parseInt(tpSizeInput || '1') * parseInt(ppSizeInput || '1')}`,
           readonly: true,
         },
       ],
@@ -951,7 +983,7 @@ export default function QuickEstimate() {
             variant="primary"
             size="lg"
             onClick={() => { setTestResult(null); setCalcTrigger(t => t + 1); }}
-            isDisabled={isCalculating || !gpu || !model || catalogLoading || invalidISL || invalidOSL || invalidUsers || invalidTpSize}
+            isDisabled={isCalculating || !gpu || !model || catalogLoading || invalidISL || invalidOSL || invalidUsers || invalidTpSize || invalidPpSize}
           >
             {isCalculating ? 'Calculating...' : 'Calculate'}
           </Button>
@@ -1128,7 +1160,7 @@ export default function QuickEstimate() {
               <span className={styles.tileValue}>{Math.round(gpus)}<span className={styles.tileUnit}>× {gpu}</span></span>
               <span className={styles.tileSub}>
                 {testResult ? (
-                  <>TP={testResult.memory_analysis.tp_size} × {testResult.memory_analysis.replicas} replica{testResult.memory_analysis.replicas > 1 ? 's' : ''} · {testConcurrentUsers} concurrent users</>
+                  <>TP={testResult.memory_analysis.tp_size}{testResult.parallelism_strategy.pp_size > 1 ? ` × PP=${testResult.parallelism_strategy.pp_size}` : ''} × {testResult.memory_analysis.replicas} replica{testResult.memory_analysis.replicas > 1 ? 's' : ''} · {testConcurrentUsers} concurrent users</>
                 ) : (
                   <>Configure workload below to see results</>
                 )}
@@ -1144,8 +1176,11 @@ export default function QuickEstimate() {
                     weight memory = <span className={styles.em}>{testResult.memory_analysis.weight_gb.toFixed(1)} GB</span><br />
                     usable / GPU = <span className={styles.em}>{memUsablePerGpu.toFixed(0)} GB</span><br />
                     TP size = ⌈{testResult.memory_analysis.weight_gb.toFixed(0)} ÷ {memUsablePerGpu.toFixed(0)}⌉ = <span className={styles.em}>{testResult.memory_analysis.tp_size}</span><br />
+                    {testResult.parallelism_strategy.pp_size > 1 && (
+                      <>PP size = <span className={styles.em}>{testResult.parallelism_strategy.pp_size}</span><br /></>
+                    )}
                     replicas = {testResult.memory_analysis.replicas}<br />
-                    total = <span className={styles.em}>{Math.round(gpus)} GPUs</span>
+                    total = {testResult.parallelism_strategy.pp_size > 1 ? `${testResult.memory_analysis.tp_size}×${testResult.parallelism_strategy.pp_size}×${testResult.memory_analysis.replicas}` : `${testResult.memory_analysis.tp_size}×${testResult.memory_analysis.replicas}`} = <span className={styles.em}>{Math.round(gpus)} GPUs</span>
                   </>
                 ) : (
                   <>
@@ -1186,7 +1221,8 @@ export default function QuickEstimate() {
                     bytes/param = <span className={styles.em}>
                       {actualWeightPrecision === 'FP16' ? '2' :
                        actualWeightPrecision === 'FP8' ? '1' :
-                       actualWeightPrecision === 'INT8' ? '1' : '0.5'}
+                       actualWeightPrecision === 'INT8' ? '1' :
+                       actualWeightPrecision === 'MXFP4' ? '0.5' : '0.5'}
                     </span><br />
                     params × bytes/param<br />
                     = <span className={styles.em}>{testResult.memory_analysis.weight_gb.toFixed(1)} GB</span>
@@ -1413,7 +1449,10 @@ export default function QuickEstimate() {
                       • Weight memory: <strong>{testResult.memory_analysis.weight_gb.toFixed(1)} GB</strong> ({actualWeightPrecision})<br/>
                       • Weight per GPU: <strong>{testResult.memory_analysis.weight_gb_per_gpu.toFixed(1)} GB</strong><br/>
                       • Usable per GPU: <strong>{memUsablePerGpu.toFixed(0)} GB</strong> (90% of {gpu.includes('H200') ? '141' : '80'} GB)<br/>
-                      • Tensor Parallel size: <strong>{testResult.memory_analysis.tp_size}</strong> {testResult.memory_analysis.weight_gb > memUsablePerGpu ? '(required - weights don\'t fit in 1 GPU)' : '(weights fit, but using for replicas)'}
+                      • Tensor Parallel size: <strong>{testResult.memory_analysis.tp_size}</strong> {testResult.memory_analysis.weight_gb > memUsablePerGpu ? '(required - weights don\'t fit in 1 GPU)' : '(weights fit, but using for replicas)'}<br/>
+                      {testResult.parallelism_strategy.pp_size > 1 && (
+                        <>• Pipeline Parallel size: <strong>{testResult.parallelism_strategy.pp_size}</strong> (splits model layers across pipeline stages)<br/></>
+                      )}
                     </div>
                   </div>
 
