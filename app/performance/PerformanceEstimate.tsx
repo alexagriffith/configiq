@@ -789,6 +789,7 @@ export default function QuickEstimate() {
             'Weight precision (overridden by model quantization_config)' : 'Weight precision',
           value: testWeightPrecision,
           type: 'select' as const,
+          term: 'weightPrecision',
           options: ['FP16', 'FP8', 'INT8', 'INT4', 'MXFP4'] as const,
           onChange: (val: string) => setTestWeightPrecision(val as any)
         },
@@ -796,6 +797,7 @@ export default function QuickEstimate() {
           label: 'KV cache precision',
           value: testKVCachePrecision,
           type: 'select' as const,
+          term: 'kvCachePrecision',
           options: ['FP16', 'FP8'] as const,
           onChange: (val: string) => setTestKVCachePrecision(val as any)
         },
@@ -803,6 +805,7 @@ export default function QuickEstimate() {
           label: 'MoE quantization',
           value: testMoeQuantMode,
           type: 'select' as const,
+          term: 'moeQuantization',
           options: [
             { value: 'w4a16_mxfp4', label: 'W4A16 MXFP4' },
             { value: 'w4a8_mxfp4_mxfp8', label: 'W4A8 MXFP4+FP8' },
@@ -853,6 +856,7 @@ export default function QuickEstimate() {
         {
           label: 'Pipeline parallel size (PP)',
           value: ppSizeInput,
+          term: 'pipelineParallel',
           readonly: false,
           type: 'number' as const,
           invalid: invalidPpSize,
@@ -909,6 +913,7 @@ export default function QuickEstimate() {
         {
           label: 'max_model_len',
           value: vllmOverride && vllmManualMaxModelLen !== null ? `${vllmManualMaxModelLen}` : testResult ? `${testResult.vllm_config.max_model_len}` : '—',
+          term: 'maxModelLen',
           readonly: !vllmOverride,
           type: vllmOverride ? 'number' as const : undefined,
           onChange: vllmOverride ? (val: string) => setVllmManualMaxModelLen(parseInt(val) || 1) : undefined
@@ -916,6 +921,7 @@ export default function QuickEstimate() {
         {
           label: 'enable_chunked_prefill',
           value: vllmOverride && vllmManualChunkedPrefill !== null ? (vllmManualChunkedPrefill ? 'Yes' : 'No') : testResult ? (testResult.vllm_config.enable_chunked_prefill ? 'Yes' : 'No') : '—',
+          term: 'chunkedPrefill',
           readonly: !vllmOverride,
           type: vllmOverride ? 'select' as const : undefined,
           options: vllmOverride ? ['Yes', 'No'] : undefined,
@@ -924,6 +930,7 @@ export default function QuickEstimate() {
         {
           label: 'enable_prefix_caching',
           value: vllmOverride && vllmManualPrefixCaching !== null ? (vllmManualPrefixCaching ? 'Yes' : 'No') : testResult ? (testResult.vllm_config.enable_prefix_caching ? 'Yes' : 'No') : '—',
+          term: 'prefixCaching',
           readonly: !vllmOverride,
           type: vllmOverride ? 'select' as const : undefined,
           options: vllmOverride ? ['Yes', 'No'] : undefined,

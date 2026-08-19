@@ -51,6 +51,22 @@ export const GLOSSARY: Record<string, { title: string; body: string }> = {
     title: 'Tensor parallel size (TP)',
     body: 'How many GPUs a single model copy is split across. TP = 1 means the whole model fits on one GPU; larger models need TP = 2, 4, 8…',
   },
+  pipelineParallel: {
+    title: 'Pipeline parallel size (PP)',
+    body: 'How many GPUs to split the model layers across in a pipeline. PP = 1 means all layers on the same GPU(s). PP > 1 splits layers across GPUs for very large models. Total GPUs = TP × PP × replicas.',
+  },
+  maxModelLen: {
+    title: 'max_model_len',
+    body: 'Maximum total sequence length (input + output tokens) the engine will allow. Set to "auto" to use the model\'s native context window from its config. Lower values save KV cache memory.',
+  },
+  chunkedPrefill: {
+    title: 'enable_chunked_prefill',
+    body: 'When enabled, vLLM splits long prompts into chunks to avoid stalling decode (generation). Improves latency for mixed workloads with very long prompts. Recommended when ISL > 4096 or batch size > 64.',
+  },
+  prefixCaching: {
+    title: 'enable_prefix_caching',
+    body: 'When enabled, vLLM automatically detects and reuses shared prompt prefixes (e.g., system prompts). Saves compute and memory when many requests share the same prefix. Recommended when you have shared prefixes.',
+  },
   rangeDrivers: {
     title: 'Range drivers',
     body: 'The estimate is a range, not a single number, because real traffic varies. Range drivers are the assumptions that move the GPU count the most — tune these first to make the estimate match your reality.',
@@ -59,9 +75,25 @@ export const GLOSSARY: Record<string, { title: string; body: string }> = {
     title: 'Worst-case context',
     body: 'KV cache if every active request filled the model\'s entire context window (max_model_len) at the same time. A safety ceiling — most workloads never reach it.',
   },
+  prefix: {
+    title: 'Prefix length',
+    body: 'Number of tokens that are shared across requests (e.g., a system prompt). When prefix caching is enabled, these tokens are computed once and reused, saving memory and compute.',
+  },
   prefixCache: {
     title: 'Prefix-cache hit rate',
     body: 'Share of requests that reuse an already-computed prompt prefix (e.g. a shared system prompt). Higher hit rates reuse KV cache and cut memory.',
+  },
+  weightPrecision: {
+    title: 'Weight precision',
+    body: 'Number format for model parameters. FP16/BF16 = 2 bytes/param (full precision). FP8 = 1 byte (8-bit float). INT8 = 1 byte (8-bit integer). INT4 = 0.5 bytes (4-bit integer). MXFP4 = 0.5 bytes (Microscaling FP4). Lower precision reduces memory but may impact quality.',
+  },
+  kvCachePrecision: {
+    title: 'KV cache precision',
+    body: 'Number format for key-value cache vectors. FP16 = 2 bytes per element (standard). FP8 = 1 byte per element (half the memory, slight quality loss). Lower precision lets you fit more requests in the same memory.',
+  },
+  moeQuantization: {
+    title: 'MoE quantization mode',
+    body: 'Quantization strategy for Mixture-of-Experts models. W4A16 MXFP4 = 4-bit weights, 16-bit activations (best quality, H100+). W4A8 = 4-bit weights, 8-bit activations (~2× faster on B200, lower quality). CUTLASS = H100-optimized kernel. TRT-LLM = B200 TensorRT-LLM variant.',
   },
   gpuUtil: {
     title: 'GPU memory utilization',
