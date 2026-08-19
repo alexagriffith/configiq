@@ -290,9 +290,6 @@ export default function QuickEstimate() {
         const spec = modelSpecs.get(model)
         const isMoe = (spec?.num_experts ?? 0) > 1
 
-        // For MoE models with MXFP4, use moe_quant_mode instead of gemm_quant_mode
-        const useMoeQuant = isMoe && testWeightPrecision === 'MXFP4'
-
         const result = await fetchEstimateAsInferenceResult({
           model_path: model,
           system: systemId,
@@ -308,13 +305,11 @@ export default function QuickEstimate() {
           backend_version: backendVersion || undefined,
           hf_model_config: hfConfig as Record<string, unknown> | null,
           kvcache_quant_mode: testKVCachePrecision === 'FP8' ? 'fp8' : null,
-          gemm_quant_mode: useMoeQuant ? null : (
-            testWeightPrecision === 'FP8' ? 'fp8' :
-            testWeightPrecision === 'INT8' ? 'int8_wo' :
-            testWeightPrecision === 'INT4' ? 'int4_wo' :
-            testWeightPrecision === 'MXFP4' ? 'int4_wo' : null
-          ),
-          moe_quant_mode: useMoeQuant ? testMoeQuantMode : undefined,
+          gemm_quant_mode: testWeightPrecision === 'FP8' ? 'fp8' :
+                          testWeightPrecision === 'INT8' ? 'int8_wo' :
+                          testWeightPrecision === 'INT4' ? 'int4_wo' :
+                          testWeightPrecision === 'MXFP4' ? 'mxfp4' : null,
+          moe_quant_mode: isMoe ? testMoeQuantMode : undefined,
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
         if (!cancelled) {
@@ -781,7 +776,12 @@ export default function QuickEstimate() {
       summary: [
         { k: 'weights', v: actualWeightPrecision },
         { k: 'KV', v: testKVCachePrecision },
-        ...(isMoeModel && testWeightPrecision === 'MXFP4' ? [{ k: 'MoE', v: testMoeQuantMode }] : [])
+        ...(isMoeModel ? [{
+          k: 'MoE',
+          v: testMoeQuantMode === 'w4a16_mxfp4' ? 'W4A16' :
+             testMoeQuantMode === 'w4a8_mxfp4_mxfp8' ? 'W4A8' :
+             testMoeQuantMode === 'w4a16_mxfp4_cutlass' ? 'CUTLASS' : 'TRT-LLM'
+        }] : [])
       ],
       fields: [
         {
@@ -799,13 +799,18 @@ export default function QuickEstimate() {
           options: ['FP16', 'FP8'] as const,
           onChange: (val: string) => setTestKVCachePrecision(val as any)
         },
-        ...(isMoeModel && testWeightPrecision === 'MXFP4' ? [{
-          label: 'MoE quantization mode',
+        ...(isMoeModel ? [{
+          label: 'MoE quantization',
           value: testMoeQuantMode,
           type: 'select' as const,
-          options: ['w4a16_mxfp4', 'w4a8_mxfp4_mxfp8', 'w4a16_mxfp4_cutlass', 'w4a8_mxfp4_mxfp8_trtllm'] as const,
+          options: [
+            { value: 'w4a16_mxfp4', label: 'W4A16 MXFP4' },
+            { value: 'w4a8_mxfp4_mxfp8', label: 'W4A8 MXFP4+FP8' },
+            { value: 'w4a16_mxfp4_cutlass', label: 'W4A16 MXFP4 (CUTLASS)' },
+            { value: 'w4a8_mxfp4_mxfp8_trtllm', label: 'W4A8 MXFP4+FP8 (TRT-LLM)' }
+          ],
           onChange: (val: string) => setTestMoeQuantMode(val as any),
-          help: 'w4a16: best quality, works on H100+. w4a8: ~2× faster on B200. cutlass: H100-optimized. trtllm: B200 TRT-LLM variant.'
+          help: 'W4A16: best quality, H100+. W4A8: ~2× faster on B200. CUTLASS: H100-optimized. TRT-LLM: B200 TRT-LLM variant.'
         }] : []),
       ],
     },
@@ -1674,9 +1679,11 @@ export default function QuickEstimate() {
                               aria-label={f.label}
                               onChange={(_, val) => f.onChange?.(val)}
                             >
-                              {(f.options || [f.value]).map((o: any) => (
-                                <FormSelectOption key={o} value={o} label={o} />
-                              ))}
+                              {(f.options || [f.value]).map((o: any) => {
+                                const optValue = typeof o === 'string' ? o : o.value;
+                                const optLabel = typeof o === 'string' ? o : o.label;
+                                return <FormSelectOption key={optValue} value={optValue} label={optLabel} />;
+                              })}
                             </FormSelect>
                             {f.help && (
                               <div style={{ fontSize: '12px', color: '#6a6e73', marginTop: '4px', lineHeight: '1.5' }}>
