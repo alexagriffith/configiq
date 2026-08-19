@@ -34,6 +34,7 @@ export interface EstimateAdapterInput {
   hf_model_config?: Record<string, unknown> | null
   moe_ep_size?: number
   moe_tp_size?: number
+  moe_quant_mode?: string
   prefix?: number
   kvcache_quant_mode?: string | null
   gemm_quant_mode?: string | null
@@ -86,6 +87,7 @@ export async function fetchEstimateAsInferenceResult(
   if (input.prefix != null && input.prefix > 0) body.prefix = input.prefix
   if (input.kvcache_quant_mode) body.kvcache_quant_mode = input.kvcache_quant_mode
   if (input.gemm_quant_mode) body.gemm_quant_mode = input.gemm_quant_mode
+  if (input.moe_quant_mode) body.moe_quant_mode = input.moe_quant_mode
 
   if (input.hf_model_config) {
     body.model_config = input.hf_model_config

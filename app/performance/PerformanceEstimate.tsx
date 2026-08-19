@@ -157,6 +157,7 @@ export default function QuickEstimate() {
   const [elapsed, setElapsed] = React.useState(0);
   const [testWeightPrecision, setTestWeightPrecision] = React.useState<'FP16' | 'FP8' | 'INT8' | 'INT4' | 'MXFP4'>('FP16');
   const [testKVCachePrecision, setTestKVCachePrecision] = React.useState<'FP16' | 'FP8'>('FP16');
+  const [testMoeQuantMode, setTestMoeQuantMode] = React.useState<'w4a16_mxfp4' | 'w4a8_mxfp4_mxfp8' | 'w4a16_mxfp4_cutlass' | 'w4a8_mxfp4_mxfp8_trtllm'>('w4a16_mxfp4');
   const [testPpSize, setTestPpSize] = React.useState(1);
   
   const [islInput, setIslInput] = React.useState('2048');
@@ -288,6 +289,10 @@ export default function QuickEstimate() {
       try {
         const spec = modelSpecs.get(model)
         const isMoe = (spec?.num_experts ?? 0) > 1
+
+        // For MoE models with MXFP4, use moe_quant_mode instead of gemm_quant_mode
+        const useMoeQuant = isMoe && testWeightPrecision === 'MXFP4'
+
         const result = await fetchEstimateAsInferenceResult({
           model_path: model,
           system: systemId,
@@ -303,10 +308,13 @@ export default function QuickEstimate() {
           backend_version: backendVersion || undefined,
           hf_model_config: hfConfig as Record<string, unknown> | null,
           kvcache_quant_mode: testKVCachePrecision === 'FP8' ? 'fp8' : null,
-          gemm_quant_mode: testWeightPrecision === 'FP8' ? 'fp8' :
-                          testWeightPrecision === 'INT8' ? 'int8_wo' :
-                          testWeightPrecision === 'INT4' ? 'int4_wo' :
-                          testWeightPrecision === 'MXFP4' ? 'int4_wo' : null,  // MXFP4 → int4_wo for non-MoE
+          gemm_quant_mode: useMoeQuant ? null : (
+            testWeightPrecision === 'FP8' ? 'fp8' :
+            testWeightPrecision === 'INT8' ? 'int8_wo' :
+            testWeightPrecision === 'INT4' ? 'int4_wo' :
+            testWeightPrecision === 'MXFP4' ? 'int4_wo' : null
+          ),
+          moe_quant_mode: useMoeQuant ? testMoeQuantMode : undefined,
           ...(isMoe && { moe_ep_size: testTpSize }),
         });
         if (!cancelled) {
@@ -720,7 +728,11 @@ export default function QuickEstimate() {
   const validationWarnings = getValidationWarnings();
 
   // Build accordion sections dynamically from current state
-  const buildAccordionSections = () => [
+  const buildAccordionSections = () => {
+    const spec = modelSpecs.get(model);
+    const isMoeModel = (spec?.num_experts ?? 0) > 1;
+
+    return [
     {
       id: 'workload', title: 'Workload',
       summary: [
@@ -768,7 +780,8 @@ export default function QuickEstimate() {
       id: 'memory', title: 'Precision & memory',
       summary: [
         { k: 'weights', v: actualWeightPrecision },
-        { k: 'KV', v: testKVCachePrecision }
+        { k: 'KV', v: testKVCachePrecision },
+        ...(isMoeModel && testWeightPrecision === 'MXFP4' ? [{ k: 'MoE', v: testMoeQuantMode }] : [])
       ],
       fields: [
         {
@@ -786,6 +799,14 @@ export default function QuickEstimate() {
           options: ['FP16', 'FP8'] as const,
           onChange: (val: string) => setTestKVCachePrecision(val as any)
         },
+        ...(isMoeModel && testWeightPrecision === 'MXFP4' ? [{
+          label: 'MoE quantization mode',
+          value: testMoeQuantMode,
+          type: 'select' as const,
+          options: ['w4a16_mxfp4', 'w4a8_mxfp4_mxfp8', 'w4a16_mxfp4_cutlass', 'w4a8_mxfp4_mxfp8_trtllm'] as const,
+          onChange: (val: string) => setTestMoeQuantMode(val as any),
+          help: 'w4a16: best quality, works on H100+. w4a8: ~2× faster on B200. cutlass: H100-optimized. trtllm: B200 TRT-LLM variant.'
+        }] : []),
       ],
     },
     {
@@ -918,6 +939,7 @@ export default function QuickEstimate() {
       ],
     },
   ];
+  };
 
   return (
     <div className={styles.page}>
@@ -1646,15 +1668,22 @@ export default function QuickEstimate() {
                         {f.readonly ? (
                           <TextInput value={String(f.value)} aria-label={f.label} isDisabled />
                         ) : f.type === 'select' ? (
-                          <FormSelect
-                            value={String(f.value)}
-                            aria-label={f.label}
-                            onChange={(_, val) => f.onChange?.(val)}
-                          >
-                            {(f.options || [f.value]).map((o: any) => (
-                              <FormSelectOption key={o} value={o} label={o} />
-                            ))}
-                          </FormSelect>
+                          <>
+                            <FormSelect
+                              value={String(f.value)}
+                              aria-label={f.label}
+                              onChange={(_, val) => f.onChange?.(val)}
+                            >
+                              {(f.options || [f.value]).map((o: any) => (
+                                <FormSelectOption key={o} value={o} label={o} />
+                              ))}
+                            </FormSelect>
+                            {f.help && (
+                              <div style={{ fontSize: '12px', color: '#6a6e73', marginTop: '4px', lineHeight: '1.5' }}>
+                                {f.help}
+                              </div>
+                            )}
+                          </>
                         ) : f.type === 'range' ? (
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
