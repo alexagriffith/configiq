@@ -49,10 +49,8 @@ export function GpuBubbleChart({ data, width, height, xLabel, yLabel }: Props) {
   const yValues = data.map(d => d.y);
   const sizeValues = data.map(d => d.size);
 
-  const xMin = 0;
   const rawXMax = Math.max(0, ...xValues);
   const xMax = Number.isFinite(rawXMax) && rawXMax > 0 ? rawXMax * 1.1 : 1;
-  const yMin = 0;
   const rawYMax = Math.max(0, ...yValues);
   const yMax = Number.isFinite(rawYMax) && rawYMax > 0 ? rawYMax * 1.1 : 1;
   const sizeMin = sizeValues.length === 0 ? 0 : Math.min(...sizeValues);

@@ -151,11 +151,13 @@ export function ComboBox({ value, onChange, items, placeholder, id, allowCustom 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
+        if (totalItems === 0) { if (!open) setOpen(true); break }
         setFocusIndex(prev => (prev + 1) % totalItems)
         if (!open) setOpen(true)
         break
       case 'ArrowUp':
         e.preventDefault()
+        if (totalItems === 0) { if (!open) setOpen(true); break }
         setFocusIndex(prev => (prev <= 0 ? totalItems - 1 : prev - 1))
         if (!open) setOpen(true)
         break

@@ -135,7 +135,7 @@ export function Settings() {
             <div>
               <div className={styles.sectionTitle}>
                 Tested models
-                <span style={{ fontSize: '11px', fontWeight: 400, marginLeft: '8px', color: '#6a6e73' }}>
+                <span style={{ fontSize: '11.5px', fontWeight: 400, marginLeft: '8px', color: '#6a6e73' }}>
                   {validatedOpen ? '▲' : '▼'}
                 </span>
               </div>
