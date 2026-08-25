@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConfigIQ widget in AI Architect</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #111827; color: #f8fafc; font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; padding: 48px 24px; }
+    main { margin: 0 auto; max-width: 1080px; }
+    .product { color: #93c5fd; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: 30px; margin: 6px 0 4px; }
+    .context { color: #cbd5e1; margin: 0 0 24px; }
+    @media (max-width: 520px) { body { padding: 22px 14px; } h1 { font-size: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="product">AI Architect · Your plan</span>
+    <h1>Validate the performance target</h1>
+    <p class="context">The plan supplies the starting model and GPU. ConfigIQ owns the live sizing result.</p>
+    <configiq-sizing-widget id="sizing" endpoint="/api/configiq" timeout-ms="27000"></configiq-sizing-widget>
+  </main>
+  <script type="module">
+    await import('http://localhost:3100/widgets/configiq-sizing-widget-v1.js');
+    const state = new URLSearchParams(location.search).get('state') || 'success';
+    const widget = document.querySelector('#sizing');
+    if (state === 'error') widget.setAttribute('endpoint', '/api/configiq?fail=1');
+    widget.config = {
+      models: [
+        { value: 'qwen-2.5-7b', label: 'Qwen 2.5 7B Instruct', modelPath: 'Qwen/Qwen2.5-7B-Instruct' },
+        { value: 'mistral-7b', label: 'Mistral 7B Instruct', modelPath: 'mistralai/Mistral-7B-Instruct-v0.3' }
+      ],
+      gpus: [
+        { value: 'h200', label: 'NVIDIA H200', system: 'h200_sxm' },
+        { value: 'h100', label: 'NVIDIA H100', system: 'h100_sxm' }
+      ],
+      seed: {
+        model: state === 'empty' ? '' : 'qwen-2.5-7b',
+        gpu: ['empty', 'needs-gpu'].includes(state) ? '' : 'h200',
+        isl: state === 'invalid' ? -1 : 2048,
+        osl: 512,
+        concurrency: 10,
+        ttft: 500
+      }
+    };
+  </script>
+</body>
+</html>

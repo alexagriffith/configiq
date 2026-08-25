@@ -2,6 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  async headers() {
+    return [
+      {
+        source: '/widgets/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ];
+  },
   transpilePackages: [
     "@patternfly/react-core",
     "@patternfly/react-charts",
