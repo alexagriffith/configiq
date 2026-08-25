@@ -21,6 +21,12 @@ function positiveInteger(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function seedValue(seed, primary, alias, fallback) {
+  if (Object.hasOwn(seed, primary)) return seed[primary];
+  if (alias && Object.hasOwn(seed, alias)) return seed[alias];
+  return fallback;
+}
+
 function strictPositiveInteger(value) {
   const parsed = typeof value === 'number' ? value : Number(String(value).trim());
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -109,71 +115,126 @@ function configSignature(config) {
 
 const styles = `
   :host {
-    --ciq-accent: #0066cc;
-    --ciq-accent-strong: #004b95;
-    --ciq-accent-soft: #e7f1fa;
-    --ciq-teal: #007a87;
-    --ciq-ink: #151515;
-    --ciq-muted: #3c3f42;
-    --ciq-caption: #54585c;
-    --ciq-border: #d2d2d2;
-    --ciq-surface: #ffffff;
-    --ciq-surface-subtle: #f7f7f8;
+    --ciq-accent: var(--configiq-widget-accent, #0066cc);
+    --ciq-accent-strong: var(--configiq-widget-accent-strong, #004b95);
+    --ciq-accent-soft: var(--configiq-widget-accent-soft, #e7f1fa);
+    --ciq-teal: var(--configiq-widget-secondary-accent, #007a87);
+    --ciq-ink: var(--configiq-widget-text, #151515);
+    --ciq-muted: var(--configiq-widget-text-muted, #3c3f42);
+    --ciq-caption: var(--configiq-widget-text-caption, #54585c);
+    --ciq-border: var(--configiq-widget-border, #d2d2d2);
+    --ciq-surface: var(--configiq-widget-surface, #ffffff);
+    --ciq-surface-subtle: var(--configiq-widget-surface-subtle, #f7f7f8);
+    --ciq-control: var(--configiq-widget-control, #ffffff);
+    --ciq-control-border: var(--configiq-widget-control-border, #8a8d90);
+    --ciq-header: var(--configiq-widget-header, linear-gradient(115deg, #002f5d 0%, #005f73 100%));
+    --ciq-header-text: var(--configiq-widget-header-text, #ffffff);
+    --ciq-header-muted: var(--configiq-widget-header-muted, #eef7fb);
+    --ciq-eyebrow: var(--configiq-widget-eyebrow, #c9e8ff);
+    --ciq-chevron: var(--configiq-widget-chevron, #3c3f42);
+    --ciq-error-surface: var(--configiq-widget-error-surface, #fff8e5);
+    --ciq-error-text: var(--configiq-widget-error-text, #4f3800);
+    --ciq-shadow: var(--configiq-widget-shadow, 0 8px 24px rgb(21 21 21 / 8%));
+    --ciq-focus-ring: var(--configiq-widget-focus-ring, rgb(0 102 204 / 18%));
     color: var(--ciq-ink);
     display: block;
     font-family: "Red Hat Text", "Plus Jakarta Sans", system-ui, sans-serif;
     line-height: 1.5;
   }
+  :host([theme="dark"]) {
+    --ciq-accent: var(--configiq-widget-accent, #7c73ff);
+    --ciq-accent-strong: var(--configiq-widget-accent-strong, #c4c0ff);
+    --ciq-accent-soft: var(--configiq-widget-accent-soft, #292742);
+    --ciq-teal: var(--configiq-widget-secondary-accent, #6bb8bd);
+    --ciq-ink: var(--configiq-widget-text, #f5f5f5);
+    --ciq-muted: var(--configiq-widget-text-muted, #d1d1d1);
+    --ciq-caption: var(--configiq-widget-text-caption, #b8b8b8);
+    --ciq-border: var(--configiq-widget-border, #484848);
+    --ciq-surface: var(--configiq-widget-surface, #252525);
+    --ciq-surface-subtle: var(--configiq-widget-surface-subtle, #202020);
+    --ciq-control: var(--configiq-widget-control, #252525);
+    --ciq-control-border: var(--configiq-widget-control-border, #484848);
+    --ciq-header: var(--configiq-widget-header, #252525);
+    --ciq-header-text: var(--configiq-widget-header-text, #f5f5f5);
+    --ciq-header-muted: var(--configiq-widget-header-muted, #d1d1d1);
+    --ciq-eyebrow: var(--configiq-widget-eyebrow, #d1d1d1);
+    --ciq-chevron: var(--configiq-widget-chevron, #b8b8b8);
+    --ciq-error-surface: var(--configiq-widget-error-surface, #3a321f);
+    --ciq-error-text: var(--configiq-widget-error-text, #ffe8a3);
+    --ciq-shadow: var(--configiq-widget-shadow, none);
+  }
   * { box-sizing: border-box; }
   .shell {
     background: var(--ciq-surface);
     border: 1px solid var(--ciq-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgb(21 21 21 / 8%);
+    border-radius: 6px;
+    box-shadow: var(--ciq-shadow);
     overflow: hidden;
   }
   .header {
-    background: linear-gradient(115deg, #002f5d 0%, #005f73 100%);
-    color: #fff;
+    background: var(--ciq-header);
+    color: var(--ciq-header-text);
     display: grid;
     gap: 6px;
-    padding: 22px 24px;
+    grid-template-areas:
+      "eyebrow link"
+      "title link"
+      "intro link";
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 20px;
   }
+  .header-top { display: contents; }
   .eyebrow {
-    color: #c9e8ff;
+    color: var(--ciq-eyebrow);
     font-family: "Red Hat Mono", "JetBrains Mono", monospace;
     font-size: 12px;
     font-weight: 600;
     letter-spacing: .07em;
     text-transform: uppercase;
+    grid-area: eyebrow;
   }
-  h2 { font-size: 22px; font-weight: 600; line-height: 1.2; margin: 0; }
-  .intro { color: #eef7fb; font-size: 14px; margin: 0; max-width: 72ch; }
-  .content { display: grid; gap: 22px; padding: 24px; }
+  .full-link {
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    color: var(--ciq-header-text);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .full-link-slot:empty { display: none; }
+  .full-link-slot { align-self: start; grid-area: link; margin-left: 12px; }
+  .full-link:hover { background: rgb(255 255 255 / 10%); }
+  .full-link:focus-visible { outline: 3px solid var(--ciq-accent); outline-offset: 2px; }
+  .title { font-size: 22px; font-weight: 600; grid-area: title; line-height: 1.2; margin: 0; }
+  .intro { color: var(--ciq-header-muted); font-size: 14px; grid-area: intro; margin: 0; max-width: 72ch; }
+  .content { display: grid; gap: 20px; padding: 20px; }
   .inputs { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .field { display: grid; gap: 6px; grid-column: span 3; }
   .field.wide { grid-column: span 6; }
   label { color: var(--ciq-ink); font-size: 13px; font-weight: 600; }
   input, select {
     appearance: none;
-    background: #fff;
-    border: 1px solid #8a8d90;
+    background: var(--ciq-control);
+    border: 1px solid var(--ciq-control-border);
     border-radius: 6px;
     color: var(--ciq-ink);
     font: inherit;
     font-size: 14px;
+    font-variant-numeric: tabular-nums;
     min-height: 42px;
     padding: 9px 11px;
     width: 100%;
   }
   select {
-    background-image: linear-gradient(45deg, transparent 50%, #3c3f42 50%), linear-gradient(135deg, #3c3f42 50%, transparent 50%);
+    background-image: linear-gradient(45deg, transparent 50%, var(--ciq-chevron) 50%), linear-gradient(135deg, var(--ciq-chevron) 50%, transparent 50%);
     background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px;
     background-repeat: no-repeat;
     background-size: 5px 5px, 5px 5px;
     padding-right: 32px;
   }
-  input:focus, select:focus { border-color: var(--ciq-accent); box-shadow: 0 0 0 3px rgb(0 102 204 / 18%); outline: 0; }
+  input:focus, select:focus { border-color: var(--ciq-accent); box-shadow: 0 0 0 3px var(--ciq-focus-ring); outline: 0; }
   .hint { color: var(--ciq-caption); font-size: 11.5px; line-height: 1.35; }
   .results { border-top: 1px solid var(--ciq-border); padding-top: 20px; }
   .status {
@@ -184,18 +245,18 @@ const styles = `
     margin: 0;
     padding: 14px 16px;
   }
-  .status.error { background: #fff8e5; border-color: #f0ab00; color: #4f3800; }
+  .status.error { background: var(--ciq-error-surface); border-color: #f0ab00; color: var(--ciq-error-text); }
   .stats { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stat {
     background: var(--ciq-surface-subtle);
     border: 1px solid var(--ciq-border);
     border-top: 3px solid var(--ciq-teal);
-    border-radius: 8px;
+    border-radius: 6px;
     display: grid;
     gap: 4px;
     padding: 16px;
   }
-  .stat.primary { background: var(--ciq-accent-soft); border-color: #73bcf7; border-top-color: var(--ciq-accent); }
+  .stat.primary { background: var(--ciq-accent-soft); border-color: var(--ciq-accent); border-top-color: var(--ciq-accent); }
   .value {
     color: var(--ciq-ink);
     font-family: "Red Hat Display", "Plus Jakarta Sans", sans-serif;
@@ -206,10 +267,17 @@ const styles = `
   }
   .unit { color: var(--ciq-muted); font-family: "Red Hat Text", sans-serif; font-size: 13px; font-weight: 500; margin-left: 5px; white-space: nowrap; }
   .metric { color: var(--ciq-muted); font-size: 12.5px; font-weight: 600; }
-  .attribution { color: var(--ciq-caption); font-size: 11.5px; margin: 10px 0 0; }
-  .attribution a { color: var(--ciq-accent-strong); }
   @media (max-width: 720px) {
     .header, .content { padding: 18px; }
+    .header {
+      grid-template-areas:
+        "eyebrow"
+        "title"
+        "intro"
+        "link";
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .full-link-slot { margin: 8px 0 0; }
     .inputs { grid-template-columns: 1fr; }
     .field, .field.wide { grid-column: auto; }
     .stats { grid-template-columns: 1fr; }
@@ -238,6 +306,14 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
     if (this.attachShadow) this.attachShadow({ mode: 'open' });
   }
 
+  static get observedAttributes() { return ['full-url', 'full-label', 'heading-level']; }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue || !this.isConnected) return;
+    if (name === 'heading-level') this.renderHeadingLevel();
+    else this.renderFullLink();
+  }
+
   set config(value) {
     const nextConfig = {
       models: Array.isArray(value?.models) ? value.models : [],
@@ -252,6 +328,11 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
   }
 
   get config() { return this.#config; }
+
+  headingLevel() {
+    const level = Number(this.getAttribute('heading-level') || 2);
+    return Number.isInteger(level) && level >= 1 && level <= 6 ? level : 2;
+  }
 
   connectedCallback() { this.render(); }
 
@@ -271,32 +352,33 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
       <style>${styles}</style>
       <section class="shell" aria-label="IQ Configurator performance sizing">
         <header class="header">
-          <span class="eyebrow">IQ Configurator</span>
-          <h2>Performance sizing</h2>
-          <p class="intro">Adjust six workload inputs to get live throughput and latency from ConfigIQ.</p>
+          <div class="header-top">
+            <span class="eyebrow">IQ Configurator</span>
+            <span class="full-link-slot">${this.fullLinkMarkup()}</span>
+          </div>
+          <div class="title" role="heading" aria-level="${this.headingLevel()}">Performance sizing</div>
+          <p class="intro">Adjust an input to refresh throughput and latency.</p>
         </header>
         <div class="content">
           <div class="inputs" role="group" aria-label="Sizing inputs">
             <div class="field wide">
               <label for="model">Model</label>
-              <select id="model" data-field="model" required aria-required="true" aria-describedby="model-hint">
+              <select id="model" data-field="model" required aria-required="true">
                 <option value="">Select a model…</option>
                 ${optionMarkup(this.#config.models, selectedModel)}
               </select>
-              <span class="hint" id="model-hint">The model you plan to serve.</span>
             </div>
             <div class="field wide">
               <label for="gpu">GPU</label>
-              <select id="gpu" data-field="gpu" required aria-required="true" aria-describedby="gpu-hint">
+              <select id="gpu" data-field="gpu" required aria-required="true">
                 <option value="">Select a GPU…</option>
                 ${optionMarkup(this.#config.gpus, selectedGpu)}
               </select>
-              <span class="hint" id="gpu-hint">The accelerator this workload runs on.</span>
             </div>
-            ${fieldMarkup({ id: 'isl', field: 'isl', label: 'Input tokens', hint: 'Typical prompt length.', value: positiveInteger(seed.isl ?? seed.islTokens, DEFAULTS.isl) })}
-            ${fieldMarkup({ id: 'osl', field: 'osl', label: 'Output tokens', hint: 'Typical response length.', value: positiveInteger(seed.osl ?? seed.oslTokens, DEFAULTS.osl) })}
-            ${fieldMarkup({ id: 'concurrency', field: 'concurrency', label: 'Target concurrency', hint: 'Requests running at the same time.', value: positiveInteger(seed.concurrency, DEFAULTS.concurrency) })}
-            ${fieldMarkup({ id: 'ttft', field: 'ttft', label: 'Target time to first token (ms)', hint: 'Maximum time to the first token.', value: positiveInteger(seed.ttft ?? seed.ttftMs, DEFAULTS.ttft), max: 600000 })}
+            ${fieldMarkup({ id: 'isl', field: 'isl', label: 'Input tokens', hint: 'Typical prompt length.', value: seedValue(seed, 'isl', 'islTokens', DEFAULTS.isl) })}
+            ${fieldMarkup({ id: 'osl', field: 'osl', label: 'Output tokens', hint: 'Typical response length.', value: seedValue(seed, 'osl', 'oslTokens', DEFAULTS.osl) })}
+            ${fieldMarkup({ id: 'concurrency', field: 'concurrency', label: 'Target concurrency', hint: 'Requests running at the same time.', value: seedValue(seed, 'concurrency', null, DEFAULTS.concurrency) })}
+            ${fieldMarkup({ id: 'ttft', field: 'ttft', label: 'Target time to first token (ms)', hint: 'Maximum time to the first token.', value: seedValue(seed, 'ttft', 'ttftMs', DEFAULTS.ttft), max: 600000 })}
           </div>
           <div class="results" aria-live="polite"></div>
         </div>
@@ -306,6 +388,42 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
       input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'input', () => this.schedule());
     });
     this.schedule(0);
+  }
+
+  fullUrl() {
+    const value = this.getAttribute('full-url');
+    if (!value) return null;
+    try {
+      const parsed = new URL(value, globalThis.location?.href || 'https://configiq.dev/');
+      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+      const values = this.values();
+      const modelValue = values.model || this.#config.seed.model || this.#config.seed.modelId;
+      const gpuValue = values.gpu || this.#config.seed.gpu || this.#config.seed.gpuType;
+      const model = this.#config.models.find((item) => item.value === modelValue);
+      const gpu = this.#config.gpus.find((item) => item.value === gpuValue);
+      if (model?.modelPath) parsed.searchParams.set('model', model.modelPath);
+      if (gpu?.system) parsed.searchParams.set('system', gpu.system);
+      return parsed.href;
+    } catch {
+      return null;
+    }
+  }
+
+  fullLinkMarkup() {
+    const fullUrl = this.fullUrl();
+    if (!fullUrl) return '';
+    const label = this.getAttribute('full-label') || 'Open full Configurator';
+    return `<a class="full-link" href="${escapeHtml(fullUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)} ↗</a>`;
+  }
+
+  renderFullLink() {
+    const slot = this.shadowRoot?.querySelector('.full-link-slot');
+    if (slot) slot.innerHTML = this.fullLinkMarkup();
+  }
+
+  renderHeadingLevel() {
+    this.shadowRoot?.querySelector('.title')
+      ?.setAttribute('aria-level', String(this.headingLevel()));
   }
 
   values() {
@@ -323,23 +441,24 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
     this.#timer = null;
     this.#controller?.abort();
     this.#controller = null;
+    this.renderFullLink();
 
     const values = this.values();
-    if (!values.model || !values.gpu) {
-      this.showStatus(values.model ? 'Choose a GPU to size this workload.' : 'Choose a model to size this workload.');
-      return;
-    }
-
     const invalidFields = validateSizingValues(values);
     this.shadowRoot?.querySelectorAll('input[data-field]').forEach((input) => {
       input.setAttribute('aria-invalid', String(invalidFields.includes(input.dataset.field)));
     });
+    if (!values.model || !values.gpu) {
+      this.showStatus(values.model ? 'Choose a GPU to continue.' : 'Choose a model to continue.');
+      return;
+    }
+
     if (invalidFields.length) {
       this.showInputError();
       return;
     }
 
-    this.showStatus('Sizing with ConfigIQ…');
+    this.showStatus('Calculating…');
     this.#timer = setTimeout(() => void this.request(values, token), delay);
   }
 
@@ -381,7 +500,7 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
 
   showError() {
     const results = this.shadowRoot?.querySelector('.results');
-    if (results) results.innerHTML = '<p class="status error">Sizing is unavailable right now. ConfigIQ did not return a usable result. Try again in a moment.</p>';
+    if (results) results.innerHTML = '<p class="status error">Sizing is unavailable. Try again in a moment.</p>';
   }
 
   showInputError() {
@@ -391,18 +510,17 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
 
   showResult(result) {
     const metric = (label, value, unit, primary = false) => `
-      <div class="stat${primary ? ' primary' : ''}">
+      <div class="stat${primary ? ' primary' : ''}" role="listitem" aria-label="${escapeHtml(`${label}: ${Math.round(value)} ${unit}`)}">
         <strong class="value">${Math.round(value)}<span class="unit">${escapeHtml(unit)}</span></strong>
         <span class="metric">${escapeHtml(label)}</span>
       </div>`;
     const results = this.shadowRoot?.querySelector('.results');
     if (results) results.innerHTML = `
-      <div class="stats">
+      <div class="stats" role="list" aria-label="Sizing results">
         ${metric('Throughput', result.tokensPerSecond, 'tokens/s', true)}
         ${metric('Time to first token', result.ttftLatencyMs, 'ms')}
         ${metric('Time per output token', result.tpotMs, 'ms')}
-      </div>
-      <p class="attribution">Live sizing from <a href="https://configiq.dev/recommend" target="_blank" rel="noopener noreferrer">ConfigIQ</a>.</p>`;
+      </div>`;
   }
 }
 

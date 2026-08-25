@@ -37,6 +37,7 @@ import { getAppConfig } from '@/lib/app-config';
 import { DEFAULT_WORKLOAD, type WorkloadPreset } from '@/lib/workload-presets';
 import type { InferenceConfigResult } from '@/lib/gpu-math/inference-config';
 import Link from 'next/link';
+import { parsePerformancePrefill } from './performance-prefill';
 
 function modelSuggestions(): string {
   return getAppConfig().suggestedModelNames.join(', ');
@@ -77,14 +78,24 @@ export default function QuickEstimate() {
 
   const [model, setModel] = React.useState('');
   const [gpu, setGpu] = React.useState(() => getAppConfig().defaultSystem);
+  const [prefillChecked, setPrefillChecked] = React.useState(false);
+  const modelWasPrefilled = React.useRef(false);
+
+  React.useEffect(() => {
+    const prefill = parsePerformancePrefill(globalThis.location?.search || '');
+    modelWasPrefilled.current = Boolean(prefill.model);
+    if (prefill.model) setModel(prefill.model);
+    if (prefill.system) setGpu(prefill.system);
+    setPrefillChecked(true);
+  }, []);
 
   // Set model from settings after context has loaded from localStorage
   const modelFromSettings = React.useRef(false);
   React.useEffect(() => {
-    if (!hydrated || modelFromSettings.current) return;
+    if (!hydrated || !prefillChecked || modelFromSettings.current) return;
     modelFromSettings.current = true;
-    setModel(settingsDefaultModel);
-  }, [hydrated, settingsDefaultModel]);
+    if (!modelWasPrefilled.current) setModel(settingsDefaultModel);
+  }, [hydrated, prefillChecked, settingsDefaultModel]);
 
   // If defaultSystem not in catalog, fall back to first available
   React.useEffect(() => {

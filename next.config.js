@@ -9,7 +9,7 @@ const nextConfig = {
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, must-revalidate' },
         ],
       },
     ];

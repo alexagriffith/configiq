@@ -123,10 +123,76 @@ describe('ConfigIQ sizing widget lifecycle', () => {
     const fields = [...widget.shadowRoot.querySelectorAll('[data-field]')].map((item) => item.dataset.field);
     expect(fields).toEqual(['model', 'gpu', 'isl', 'osl', 'concurrency', 'ttft']);
     expect(widget.shadowRoot.textContent).not.toMatch(/parameters|precision/i);
-    for (const control of widget.shadowRoot.querySelectorAll('[data-field]')) {
+    for (const control of widget.shadowRoot.querySelectorAll('input[data-field]')) {
       expect(control.getAttribute('aria-describedby')).toBeTruthy();
       expect(widget.shadowRoot.getElementById(control.getAttribute('aria-describedby'))).toBeTruthy();
     }
+    expect(widget.shadowRoot.textContent).toContain('Adjust an input to refresh throughput and latency.');
+  });
+
+  it('supports a dark host theme and an optional configurable full-tool link', () => {
+    const widget = mountWidget();
+    widget.setAttribute('theme', 'dark');
+    widget.setAttribute('full-url', 'https://configiq.dev/performance?model=qwen');
+    widget.setAttribute('full-label', 'Open detailed sizing');
+    const link = widget.shadowRoot.querySelector('.full-link');
+    expect(widget.getAttribute('theme')).toBe('dark');
+    expect(link.href).toContain('model=Qwen%2FQwen2.5-7B-Instruct');
+    expect(link.href).toContain('system=h200_sxm');
+    expect(link.textContent).toContain('Open detailed sizing');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('updates heading hierarchy without resetting edits or requesting again', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, data: { throughput: { tokensPerSecond: 100 }, performance: { ttftLatencyMs: 20, tpotMs: 5 } } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const widget = mountWidget();
+    await vi.advanceTimersByTimeAsync(0);
+    const concurrency = widget.shadowRoot.querySelector('[data-field="concurrency"]');
+    concurrency.value = '37';
+    widget.setAttribute('heading-level', '1');
+    let title = widget.shadowRoot.querySelector('.title');
+    expect(title.getAttribute('role')).toBe('heading');
+    expect(title.getAttribute('aria-level')).toBe('1');
+    expect(widget.shadowRoot.querySelector('[data-field="concurrency"]').value).toBe('37');
+    widget.setAttribute('heading-level', '99');
+    title = widget.shadowRoot.querySelector('.title');
+    expect(title.getAttribute('aria-level')).toBe('2');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the default full-tool label concise', () => {
+    const widget = mountWidget();
+    widget.setAttribute('full-url', 'https://configiq.dev/performance');
+    expect(widget.shadowRoot.querySelector('.full-link').textContent).toContain('Open full Configurator');
+  });
+
+  it('keeps the full-tool handoff aligned with edited selections', () => {
+    const widget = mountWidget();
+    widget.setAttribute('full-url', 'https://configiq.dev/performance');
+    widget.config = {
+      models: [
+        ...config.models,
+        { value: 'other', label: 'Other model', modelPath: 'example/other' },
+      ],
+      gpus: config.gpus,
+      seed: { model: 'qwen', gpu: 'h200', isl: 2048, osl: 512, concurrency: 10, ttft: 500 },
+    };
+    const model = widget.shadowRoot.querySelector('[data-field="model"]');
+    model.value = 'other';
+    model.dispatchEvent(new Event('change'));
+    expect(widget.shadowRoot.querySelector('.full-link').href).toContain('model=example%2Fother');
+  });
+
+  it('does not render unsafe full-tool link protocols', () => {
+    const widget = mountWidget();
+    widget.setAttribute('full-url', 'javascript:alert(1)');
+    expect(widget.shadowRoot.querySelector('.full-link')).toBeNull();
   });
 
   it('keeps equivalent reactive config assignments from resetting user edits', () => {
@@ -148,6 +214,54 @@ describe('ConfigIQ sizing widget lifecycle', () => {
     expect(widget.shadowRoot.querySelector('[data-field="concurrency"]').value).toBe('37');
   });
 
+  it('applies intentional catalog reordering', () => {
+    const widget = mountWidget();
+    widget.config = {
+      models: [
+        ...config.models,
+        { value: 'other', label: 'Other model', modelPath: 'example/other' },
+      ],
+      gpus: config.gpus,
+      seed: { model: 'qwen', gpu: 'h200', isl: 2048, osl: 512, concurrency: 10, ttft: 500 },
+    };
+    const originalModelOrder = widget.config.models.map(({ value }) => value);
+    const originalGpuOrder = widget.config.gpus.map(({ value }) => value);
+    widget.config = {
+      models: [...widget.config.models].reverse(),
+      gpus: [...widget.config.gpus].reverse(),
+      seed: { ...widget.config.seed },
+    };
+    expect(widget.config.models.map(({ value }) => value)).toEqual([...originalModelOrder].reverse());
+    expect(widget.config.gpus.map(({ value }) => value)).toEqual([...originalGpuOrder].reverse());
+    expect(
+      [...widget.shadowRoot.querySelectorAll('[data-field="model"] option')]
+        .slice(1)
+        .map(({ value }) => value),
+    ).toEqual([...originalModelOrder].reverse());
+  });
+
+  it('gives every result an accessible metric label', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          throughput: { tokensPerSecond: 7156.9 },
+          performance: { ttftLatencyMs: 145.2, tpotMs: 28.8 },
+        },
+      }),
+    }));
+    const widget = mountWidget();
+    await vi.advanceTimersByTimeAsync(0);
+    const metrics = [...widget.shadowRoot.querySelectorAll('[role="listitem"]')];
+    expect(metrics).toHaveLength(3);
+    expect(metrics.map((item) => item.getAttribute('aria-label'))).toEqual([
+      'Throughput: 7157 tokens/s',
+      'Time to first token: 145 ms',
+      'Time per output token: 29 ms',
+    ]);
+  });
+
   it('keeps widget instances isolated', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -160,6 +274,34 @@ describe('ConfigIQ sizing widget lifecycle', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(first.shadowRoot.textContent).toContain('100');
     expect(second.shadowRoot.textContent).toContain('100');
+  });
+
+  it('preserves invalid host seeds and blocks the request', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const widget = mountWidget({
+      seed: { model: 'qwen', gpu: 'h200', isl: 0, osl: 512, concurrency: 10, ttft: 500 },
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+    const input = widget.shadowRoot.querySelector('[data-field="isl"]');
+    expect(input.value).toBe('0');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(widget.shadowRoot.textContent).toContain('positive whole number');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('clears stale numeric accessibility errors while a select is empty', () => {
+    const widget = mountWidget();
+    const model = widget.shadowRoot.querySelector('[data-field="model"]');
+    const input = widget.shadowRoot.querySelector('[data-field="isl"]');
+    input.value = '0';
+    input.dispatchEvent(new Event('input'));
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    model.value = '';
+    model.dispatchEvent(new Event('change'));
+    input.value = '1';
+    input.dispatchEvent(new Event('input'));
+    expect(input.getAttribute('aria-invalid')).toBe('false');
   });
 
   it('drops an out-of-order response after the user edits an input', async () => {
