@@ -14,6 +14,17 @@ vi.mock('@/contexts/SettingsContext', () => ({
   }),
 }));
 
+vi.mock('@/lib/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/app-config')>();
+  return {
+    ...actual,
+    getAppConfig: () => ({
+      ...actual.getAppConfig(),
+      defaultSystem: 'retired_gpu',
+    }),
+  };
+});
+
 vi.mock('@/lib/hooks/useAicCatalog', () => ({
   useAicCatalog: () => ({
     gpuOptions: [

@@ -99,10 +99,10 @@ export default function QuickEstimate() {
 
   // If defaultSystem not in catalog, fall back to first available
   React.useEffect(() => {
-    if (aicGpus.length > 0 && !aicGpus.find(g => g.systemId === gpu)) {
+    if (prefillChecked && aicGpus.length > 0 && !aicGpus.find(g => g.systemId === gpu)) {
       setGpu(aicGpus[0].systemId);
     }
-  }, [aicGpus, gpu]);
+  }, [aicGpus, gpu, prefillChecked]);
 
   const [fav, setFav] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string[]>([]);
