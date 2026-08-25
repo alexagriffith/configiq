@@ -78,6 +78,35 @@ function optionMarkup(items, selected) {
   )).join('');
 }
 
+function configSignature(config) {
+  const seed = config.seed;
+  return JSON.stringify({
+    models: config.models.map((model) => ({
+      value: model.value,
+      label: model.label,
+      modelPath: model.modelPath,
+    })),
+    gpus: config.gpus.map((gpu) => ({
+      value: gpu.value,
+      label: gpu.label,
+      system: gpu.system,
+    })),
+    seed: {
+      model: seed.model,
+      modelId: seed.modelId,
+      gpu: seed.gpu,
+      gpuType: seed.gpuType,
+      isl: seed.isl,
+      islTokens: seed.islTokens,
+      osl: seed.osl,
+      oslTokens: seed.oslTokens,
+      concurrency: seed.concurrency,
+      ttft: seed.ttft,
+      ttftMs: seed.ttftMs,
+    },
+  });
+}
+
 const styles = `
   :host {
     --ciq-accent: #0066cc;
@@ -215,7 +244,7 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
       gpus: Array.isArray(value?.gpus) ? value.gpus : [],
       seed: value?.seed && typeof value.seed === 'object' ? value.seed : {},
     };
-    const nextSignature = JSON.stringify(nextConfig);
+    const nextSignature = configSignature(nextConfig);
     if (nextSignature === this.#configSignature) return;
     this.#config = nextConfig;
     this.#configSignature = nextSignature;

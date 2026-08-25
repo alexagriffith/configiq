@@ -133,7 +133,18 @@ describe('ConfigIQ sizing widget lifecycle', () => {
     const widget = mountWidget();
     const concurrency = widget.shadowRoot.querySelector('[data-field="concurrency"]');
     concurrency.value = '37';
-    widget.config = structuredClone(widget.config);
+    widget.config = {
+      gpus: widget.config.gpus.map(({ value, label, system }) => ({ system, label, value })),
+      seed: {
+        ttft: 500,
+        concurrency: 10,
+        osl: 512,
+        isl: 2048,
+        gpu: 'h200',
+        model: 'qwen',
+      },
+      models: widget.config.models.map(({ value, label, modelPath }) => ({ modelPath, label, value })),
+    };
     expect(widget.shadowRoot.querySelector('[data-field="concurrency"]').value).toBe('37');
   });
 
