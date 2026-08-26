@@ -12,20 +12,22 @@ state; there is no local fallback.
 ## Embed
 
 ```html
-<script type="module" src="https://configiq.dev/widgets/configiq-sizing-widget-v1.js"></script>
-
 <configiq-sizing-widget
   id="sizing"
   endpoint="/api/configiq"
   timeout-ms="27000"
   heading-level="2"
   theme="dark"
-  full-url="https://configiq.dev/performance"
   full-label="Open full Configurator"
 ></configiq-sizing-widget>
 
 <script type="module">
+  // Choose the ConfigIQ deployment that this host trusts.
+  const configiqOrigin = 'https://configiq.xyz';
+  await import(new URL('/widgets/configiq-sizing-widget-v1.js', configiqOrigin));
+
   const widget = document.querySelector('#sizing');
+  widget.setAttribute('full-url', new URL('/performance', configiqOrigin));
   widget.config = {
     models: [
       {
@@ -48,6 +50,11 @@ state; there is no local fallback.
   };
 </script>
 ```
+
+`configiqOrigin` is deployment-specific. A development, internal, downstream,
+or self-hosted installation should replace it with its own HTTP(S) origin. The
+chosen origin controls both the module source and the optional handoff to the
+full ConfigIQ workflow; the component does not require `configiq.dev`.
 
 The host owns option labels and maps its catalog identifiers to ConfigIQ's
 `model_path` and `system` values. The widget owns validation, request timing,
@@ -156,9 +163,11 @@ non-negative values from `throughput.tokensPerSecond`,
   discard a user's in-progress edits. A materially changed model/GPU catalog or
   seed intentionally resets the fields to the new host state.
 
-## Screenshot evidence
+## Visual examples
 
-The committed evidence set is intentionally small:
+These examples help component contributors and embedding developers review the
+supported native and host presentations. The committed set is intentionally
+small:
 
 | Evidence | Desktop | Mobile |
 | --- | --- | --- |
@@ -167,9 +176,9 @@ The committed evidence set is intentionally small:
 | Missing required context | `configiq-native-empty-1440.jpg` | Covered by responsive tests |
 | Upstream unavailable, no fallback result | `configiq-native-error-1440.jpg` | Covered by responsive tests |
 
-Native screenshots establish ConfigIQ styling. Real-host screenshots prove that
-the same component integrates without copied controls or CSS. Test fixtures must
-not be labeled as screenshots of a real host application.
+Native screenshots show the ConfigIQ reference styling. Real-host screenshots
+show that the same component integrates without copied controls or CSS. Test
+fixtures are contract previews, not screenshots of a production host.
 
 ## Local host smoke test
 

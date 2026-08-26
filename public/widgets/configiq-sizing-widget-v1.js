@@ -394,7 +394,8 @@ export class ConfigIqSizingWidget extends HTMLElementBase {
     const value = this.getAttribute('full-url');
     if (!value) return null;
     try {
-      const parsed = new URL(value, globalThis.location?.href || 'https://configiq.dev/');
+      const baseUrl = globalThis.document?.baseURI || globalThis.location?.href;
+      const parsed = new URL(value, baseUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) return null;
       const values = this.values();
       const modelValue = values.model || this.#config.seed.model || this.#config.seed.modelId;
