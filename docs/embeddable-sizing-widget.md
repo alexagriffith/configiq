@@ -162,3 +162,6 @@ npm test -- tests/widgets/configiq-sizing-widget.test.mjs
 The tests cover request mapping, response validation, incomplete and error
 states, stale requests, accessibility, configuration updates, and full-workflow
 links.
+
+See the [developer guide](./embeddable-sizing-widget-development.md) for
+component maintenance, compatibility, and visual-review checks.
